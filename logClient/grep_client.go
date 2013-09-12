@@ -39,6 +39,7 @@ func main() {
 		for i := 0; i < len(ipList); i++ {
 			serverResult := <-c
 			fmt.Println(serverResult)
+			fmt.Println("----------")
 		}
 	}
 }
