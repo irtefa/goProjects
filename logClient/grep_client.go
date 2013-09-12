@@ -45,8 +45,11 @@ func main() {
 }
 
 /*
-*/
-
+ * Sends a message to a server, and returns the file into a channel
+ * @param ipAddr string representation of the server's IP Address
+ * @param message the message to be sent back to the server
+ * @param c the channel for returning server messages
+ */
 func writeToServer(ipAddr string, message string, c chan string){
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", ipAddr)
 	if err != nil {
