@@ -35,6 +35,8 @@ func main() {
 }
 
 /*
+ * executes grep in the shell and returns the result through a buffer
+ * @param conn socket through which the server communicates with the client
  */
 func grepMyLog(conn net.Conn) {
 	buf := make([]byte, RECV_BUF_LEN)
