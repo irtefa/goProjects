@@ -39,8 +39,8 @@ func main() {
  * @param conn socket through which the server communicates with the client
  */
 func grepMyLog(conn net.Conn) {
-	buf := make([]byte, RECV_BUF_LEN)
-	_, err := conn.Read(buf)
+	recvBuf := make([]byte, RECV_BUF_LEN)
+	_, err := conn.Read(recvBuf)
 
 	if err != nil {
 		fmt.Println("Error reading:", err.Error())
@@ -48,8 +48,8 @@ func grepMyLog(conn net.Conn) {
 	}
 
 	//convert byte array to a string
-	n := bytes.Index(buf, []byte{0})
-	s := string(buf[:n])
+	n := bytes.Index(recvBuf, []byte{0})
+	s := string(recvBuf[:n])
 
 	//read what the log file is
 	metaDataInfo := []string{}
@@ -73,12 +73,14 @@ func grepMyLog(conn net.Conn) {
 	}
 
 	//send the results back
+	var sendBuf []byte
 	if len(cmdOut) > 0 {
 		results := metaDataInfo[0] + "\n" + string(cmdOut)
-		copy(buf, string(results))
+		sendBuf = make([]byte, len(results))
+		copy(sendBuf, string(results))
 	} else {
-		copy(buf, "nothing from "+metaDataInfo[0])
+		copy(recvBuf, "nothing from "+metaDataInfo[0])
 	}
-	conn.Write(buf)
+	conn.Write(sendBuf)
 	conn.Close()
 }
