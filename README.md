@@ -1,5 +1,20 @@
 #Directions & Examples
+First, make sure every machine in our distributed system is running the server program. Ths server program is located at 'logServer/server.go'. Each machine should also have Golang installed to run the server.
 
+Make sure every machine in the distributed system has a metadata.txt file with any relevant information about the machine written in the file. This file should be located in the same directory as the 'server.go' program.
+
+Now, on any one machine, to query for certain key-value pairs in log files, we must run the program 'logClient/grep_client.go'. To work properly, the client program uses a 'masterlist.txt' file located in the same directory. This file contains a list of the IP addresses of each machine in the system.
+
+TO run properly, the client program asks for two arguments, the first argument being the pattern matching for the key and the second argument for the value.
+Ex: 'go run grep_client.go <keyPattern> <valuePattern>'
+
+Note: to ignore any particular pattern in the key or value, use a wildcard statement in the respective argument. Don't use '.*' as the '.' and the '*' symbol in the first position of an argument breaks all other arguments in Golang. As a replacement, use '^.*' as the wildcard statement, as this works well with our program.
+
+After running the client program with the arguments, the client will query the servers, and the response will be printed out on console.
+
+Example queries=
+'go run grep_client.go hello world'
+'go run grep_client.go ^ERROR$ ^.*Hi.*$
 
 #Underlying Architecture
 
