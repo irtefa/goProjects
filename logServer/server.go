@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 const (
@@ -61,8 +62,21 @@ func grepMyLog(conn net.Conn) {
 		metaDataInfo = append(metaDataInfo, scanner.Text())
 	}
 
+	//check to see if this is a request from a unit test
+	env := "production"
+	if strings.HasPrefix(s, "test") {
+		s = s[4:len(s)]
+		env = "test"
+	}
 	//send the results back
-	results := execGrep(s, metaDataInfo[1], metaDataInfo[0])
+	var results string
+	if strings.EqualFold(env, "production") {
+		results = execGrep(s, metaDataInfo[1], metaDataInfo[0])
+	} else {
+		//generate random logs with rare, frequent and lines appearing in average frequency
+		genLogs()
+		results = execGrep(s, "test.log", "test.1")
+	}
 	sendBuf := make([]byte, len(results))
 	copy(sendBuf, string(results))
 	conn.Write(sendBuf)
@@ -89,7 +103,46 @@ func execGrep(s string, logName string, machineName string) string {
 	if len(cmdOut) > 0 {
 		results = machineName + "\n" + string(cmdOut)
 	} else {
-		results = "No mathing patterns found in " + machineName
+		results = "No matching patterns found in " + machineName
 	}
 	return results
+}
+
+/*
+ * Invokes the helper function with the strings we need to append to the test.log
+ */
+func genLogs() {
+	rare := "i:only appear once"
+	frequent := "frequent: line they call me"
+	sometimes := "they:call me sometimes"
+
+	var lines = []string{}
+
+	for i := 0; i < 20; i++ {
+		lines = append(lines, frequent)
+		if i%4 == 0 {
+			lines = append(lines, sometimes)
+		}
+	}
+	lines = append(lines, rare)
+	writeLines(lines, "test.log")
+}
+
+/*
+ * Creates a test.log file and appends the required strings
+ * @param lines a slice of lines that we will append to the given file name
+ * @param fileName of the test log file we are going to create
+ */
+func writeLines(lines []string, fileName string) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	w := bufio.NewWriter(file)
+	for _, line := range lines {
+		fmt.Fprintln(w, line)
+	}
+	return w.Flush()
 }
