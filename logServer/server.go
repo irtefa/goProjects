@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bufio"
@@ -14,7 +14,7 @@ const (
 	PORT         = "8008"
 )
 
-func main() {
+func server() {
 	fmt.Println("Started the logging server")
 
 	listener, err := net.Listen("tcp", ":"+PORT)
@@ -35,7 +35,7 @@ func main() {
 }
 
 /*
- * executes grep in the shell and returns the result through a buffer
+ * invokes execGrep in the shell and returns the result through a buffer
  * @param conn socket through which the server communicates with the client
  */
 func grepMyLog(conn net.Conn) {
@@ -61,26 +61,37 @@ func grepMyLog(conn net.Conn) {
 		metaDataInfo = append(metaDataInfo, scanner.Text())
 	}
 
-	//execute grep on the given string
-	cmd := exec.Command("grep", s, metaDataInfo[1])
+	//send the results back
+	results := execGrep(s, metaDataInfo[1], metaDataInfo[0])
+	sendBuf := make([]byte, len(results))
+	copy(sendBuf, string(results))
+	conn.Write(sendBuf)
+	conn.Close()
+}
 
+/*
+ * executes grep in unix shell
+ * @param s           the query string
+ * @param logName     name of the log file
+ * @param machineName name of the machine
+ */
+func execGrep(s string, logName string, machineName string) string {
+	cmd := exec.Command("grep", s, logName)
 	cmdOut, cmdErr := cmd.Output()
 
+	results := ""
 	//check if there is any error in our grep
 	if cmdErr != nil {
 		fmt.Println("ERROR WHILE READING")
 		fmt.Println(cmdErr)
+		results = "YOUR GREP COMMAND IS INVALID"
+		return results
 	}
 
-	//send the results back
-	var sendBuf []byte
 	if len(cmdOut) > 0 {
-		results := metaDataInfo[0] + "\n" + string(cmdOut)
-		sendBuf = make([]byte, len(results))
-		copy(sendBuf, string(results))
+		results = machineName + "\n" + string(cmdOut)
 	} else {
-		copy(recvBuf, "nothing from "+metaDataInfo[0])
+		results = "No mathing patterns found in " + machineName
 	}
-	conn.Write(sendBuf)
-	conn.Close()
+	return results
 }
