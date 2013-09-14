@@ -77,15 +77,13 @@ func grepMyLog(conn net.Conn) {
  */
 func execGrep(s string, logName string, machineName string) string {
 	cmd := exec.Command("grep", s, logName)
-	cmdOut, cmdErr := cmd.Output()
+	cmdOut, _ := cmd.Output()
 
 	results := ""
 	//check if there is any error in our grep
 	if cmdErr != nil {
 		fmt.Println("ERROR WHILE READING")
 		fmt.Println(cmdErr)
-		results = "YOUR GREP COMMAND IS INVALID"
-		return results
 	}
 
 	if len(cmdOut) > 0 {
