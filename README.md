@@ -13,9 +13,10 @@ Note: to ignore any particular pattern in the key or value, use a wildcard state
 After running the client program with the arguments, the client will query the servers, and the response will be printed out on console.
 
 Example queries=
+```
 'go run grep_client.go hello world'
 'go run grep_client.go ^ERROR$ ^.*Hi.*$
-
+```
 #Underlying Architecture
 
 The machine where we are querying from has a masterlist.txt that contains the ip addresses of all the machines we will query including itself. When we want to add a new machine we have to update the masterlist.txt. Similarly, when we want to remove a machine from the system we just delete the ip address of the machine from masterlist.txt.
