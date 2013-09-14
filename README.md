@@ -19,24 +19,31 @@ Example queries=
 ```
 #Underlying Architecture
 
+Our distributed logging system allows you to run system grep calls through all the machines in our system and returns the relevant matches back to the user. Grep is executed on each machine's log separately. The machines are independent in the sense that they do not wait for each other to complete. The client receives the response as soon as a machine completes executing grep on its log. As the machines are not waiting for each other there is no blocking in the execution process.
+
 The machine where we are querying from has a masterlist.txt that contains the ip addresses of all the machines we will query including itself. When we want to add a new machine we have to update the masterlist.txt. Similarly, when we want to remove a machine from the system we just delete the ip address of the machine from masterlist.txt.
 
 Each machine in our distributed system has a metadata.txt file that contains it's ip address, name of the machine and the log file it should operate on. The machine also has a logServer that runs a grep command on this log file upon request from our logClient.
 
-we say what machine is producing the logs which helps us debug code for specific processes runnin on specific machines
-
-runs grep on each individual machines on their logs
-
-whichever one finishes grep first, returns the result to the user
-
-we ignore machines that are down, in the worst case (where all machines are down), we return results from our own machine
+In order to make sure that our system is fault-tolerant we ignore machines that are down. Therefore, as soon as we observe that a machine in our system is down the whole system does not break down. In the worst case (where all machines are down), we return results from the machine that is invoking the grep_client.go.
 
 #Does our system work?
 
-Apart from testing the functionality manually we created unit test to make sure our system works. Our test generates a test log on a remote machine on the fly and runs a grep on it to check if we are retrieving results that matches with our expected results. 
+Apart from testing the functionality manually, we created unit tests to make sure our system works. Our test generates a test log on a remote machine on the fly and runs a grep on it to check if we are retrieving results that matches with our expected results. The unit test considers different forms of data for example, rare, frequent and somewhat frequent strings. 
 
-Average query latency for 100MB logs on 4 machines
+#Average query latency
+We tested our system which contained 4 different machines containing a log file of size 137 MB each. This is how the results look like
+###Rare
+1.
+2.
+3.
+4.
+###Frequent
+1.
+2.
+3.
+4.
 
 #Authors
-##Irtefa, Mohd
-##Lee, Stephen
+###Irtefa, Mohd
+###Lee, Stephen
