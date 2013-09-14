@@ -22,5 +22,5 @@ Apart from testing the functionality manually we created unit test to make sure 
 Average query latency for 100MB logs on 4 machines
 
 #Authors
-Irtefa, Mohd
-Lee, Stephen
+##Irtefa, Mohd
+##Lee, Stephen
