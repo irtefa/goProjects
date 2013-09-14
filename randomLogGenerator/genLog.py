@@ -1,18 +1,20 @@
-from time import gmtime, strftime
 import random
-import time
 
-counts = 250000
+counts = 25000000
+keys = ['MESSAGE', 'DEBUG', 'WARNING', 'EXCEPTION', 'ERROR']
 messages = [
-		'MESSAGE send me a reply',
-		'DEBUG who needs to debug?',
-		'WARNING your computer is going to blow up',
-		'EXCEPTION or is it?',
-		'ERROR is a five letter word'
-		]
+        'send me a reply',
+        'who needs to debug?',
+        'your computer is going to blow up',
+        'or is it?',
+        'is a five letter word'
+        ]
 
 i = 0
 while i < counts:
-	random.shuffle(messages)
-	print(messages[0], end=""), print(strftime(" %a, %d %b %Y %X", gmtime()))
-	i+=1
+    random.shuffle(messages)
+    random.shuffle(keys)
+    print(keys[0] + ":" + messages[0])
+    if keys[4] == 'WARNING' and messages[2] == 'or is it?':
+        print("RARE:i am a walrus")
+    i+=1
