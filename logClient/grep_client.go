@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -26,6 +27,8 @@ func main() {
 		ip_content = ip_content + ":" + PORT
 		ipList = append(ipList, ip_content)
 	}
+
+	t0 := time.Now()
 
 	if len(os.Args) < 3 {
 		fmt.Println("ERROR: Not enough arguments presented")
@@ -51,6 +54,10 @@ func main() {
 			fmt.Println("----------")
 		}
 	}
+
+	t1 := time.Now()
+	fmt.Print("Function took: ")
+	fmt.Println(t1.Sub(t0))
 }
 
 /*
