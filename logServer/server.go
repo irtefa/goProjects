@@ -1,4 +1,4 @@
-package server
+package main
 
 import (
 	"bufio"
@@ -14,7 +14,7 @@ const (
 	PORT         = "8008"
 )
 
-func server() {
+func main() {
 	fmt.Println("Started the logging server")
 
 	listener, err := net.Listen("tcp", ":"+PORT)
