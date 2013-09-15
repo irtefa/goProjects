@@ -33,16 +33,33 @@ Apart from testing the functionality manually, we created unit tests to make sur
 
 #Average query latency
 We tested our system which contained 4 different machines containing a log file of size 137 MB each. This is how the results look like
-###Rare
-1.
-2.
-3.
-4.
-###Frequent
-1.
-2.
-3.
-4.
+###Rare (Query results appear in individual log files 3.85%)
+
+1. 624.354182 ms
+
+2. 623.701059 ms 
+
+3. 614.587465 ms
+
+4. 615.16865  ms
+
+5. 633.258762 ms
+
+Average latency: 622.2140236 ms
+
+###Frequent (Query results appera in individual log files 19.23%)
+
+1. 9.465099 s
+
+2. 9.436086196 s
+
+3. 9.506596702 s
+
+4. 9.401853494 s
+
+5. 9.480838906 s
+
+Average latency: 9.4580948596 s
 
 #Authors
 ###Irtefa, Mohd
