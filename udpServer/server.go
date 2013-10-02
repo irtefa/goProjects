@@ -5,6 +5,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 )
@@ -45,6 +46,7 @@ func main() {
 
 	// Joined for loop
 	for {
+		handleCmdInput()
 		gameLoop(sock)
 		idleLoop()
 	}
@@ -79,8 +81,13 @@ func idleLoop() {
 /*
  * handle command line input
  */
-func handleCmdInput() {
+func handleCmdInput() string {
+	var userInput string
+	fmt.Print("Type something:")
+	fmt.Scanf("%s", &userInput)
+	fmt.Println("You wrote:", userInput)
 
+	return userInput
 }
 
 /*
