@@ -26,22 +26,37 @@ type Message struct {
 func main() {
 	log.Println("Started udp daemon")
 
+	//Setup address
 	addr, err := net.ResolveUDPAddr("udp", ":"+PORT)
-
 	if err != nil {
 		log.Println(err)
 	}
 
+	//Setup socket
 	sock, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		log.Println(err)
+	}
+
 	//initialize time
 	//initialize heartbeat
 	//create machine name with time#address
 	//update list with self
-	if err != nil {
-		log.Println(err)
-	}
 
 	// Joined for loop
+	for {
+		gameLoop(sock)
+		idleLoop()
+	}
+}
+
+/**
+1) Receive hearbeats
+2) Update hbc
+3) Update membership list
+4) Send heartbeats to k random members in list
+*/
+func gameLoop(sock *net.UDPConn) {
 	for {
 		//we should change the byte length in the future
 		buf := make([]byte, RECV_BUF_LEN)
@@ -55,6 +70,10 @@ func main() {
 		//update heartBeat counter -> also update self in membership list
 		//pick random addresses to send heartbeats
 	}
+}
+
+func idleLoop() {
+	// Check for rejoin. from cmd
 }
 
 /*
