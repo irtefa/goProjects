@@ -148,7 +148,7 @@ func checkForExit(sock *net.UDPConn) {
 		userInput := handleCmdInput()
 
 		if strings.ToUpper(userInput) == "LEAVE" {
-			fmt.Print("EXIT:Exited program ")
+			fmt.Print("LEAVE:Left the system ")
 			fmt.Println(time.Now())
 			sock.Close()
 			QUIT = true
@@ -188,7 +188,7 @@ func idleLoop() {
 		if userInput == "JOIN" {
 			QUIT = false
 			return
-		} else if userInput == "LEAVE" {
+		} else if userInput == "EXIT" {
 			fmt.Print("EXIT:Exited program ")
 			fmt.Println(time.Now())
 			os.Exit(0)
