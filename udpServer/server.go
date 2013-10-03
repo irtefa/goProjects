@@ -33,6 +33,19 @@ type Entry struct {
 func main() {
 	log.Println("Started udp daemon")
 
+	sock := netSetup()
+
+	idleLoop()
+	members, selfName := initializeMembers(os.Args[1])
+
+	// Joined for loop
+	for {
+		gameLoop(sock, members, selfName)
+		idleLoop()
+	}
+}
+
+func netSetup() *net.UDPConn {
 	//Setup address
 	addr, err := net.ResolveUDPAddr("udp", ":"+PORT)
 	logError(err)
@@ -41,12 +54,7 @@ func main() {
 	sock, err := net.ListenUDP("udp", addr)
 	logError(err)
 
-	members, selfName := initializeMembers(os.Args[1])
-	// Joined for loop
-	for {
-		gameLoop(sock, members, selfName)
-		idleLoop()
-	}
+	return sock
 }
 
 /*
@@ -57,7 +65,6 @@ func initializeMembers(ip string) (map[string]Entry, string) {
 
 	//create machine name with time#address
 	selfName := fmt.Sprint(t0, "#", ip)
-	fmt.Println(selfName)
 
 	//initialize Entry
 	entry := Entry{0, t0, false}
@@ -135,6 +142,28 @@ func checkFailure(members map[string]Entry) {
 }
 func idleLoop() {
 	// Check for rejoin. from cmd
+	for {
+		fmt.Println("Currently not connected to any membership")
+		fmt.Println("-------")
+		fmt.Println("OPTIONS")
+		fmt.Println("-------")
+		fmt.Println("1) Join membership (Contact the contact point)")
+		fmt.Println("2) Exit program")
+
+		userInput := handleCmdInput()
+
+		if userInput == "1" {
+			fmt.Println("Joining contact point...")
+			return
+		} else if userInput == "2" {
+			fmt.Println("Exited program")
+			os.Exit(0)
+		} else {
+			fmt.Println("Incorrect input")
+			fmt.Println("********************")
+			fmt.Println("********************")
+		}
+	}
 }
 
 /*
@@ -142,9 +171,8 @@ func idleLoop() {
  */
 func handleCmdInput() string {
 	var userInput string
-	fmt.Print("Type something:")
+	fmt.Print("   Command:")
 	fmt.Scanf("%s", &userInput)
-	fmt.Println("You wrote:", userInput)
 
 	return userInput
 }
