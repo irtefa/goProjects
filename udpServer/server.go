@@ -23,6 +23,8 @@ const (
 	K             = 3
 )
 
+var QUIT bool = false
+
 //our individual entry in heartBeat
 type Entry struct {
 	Hbc       int64 `json:"Hbc"`
@@ -42,6 +44,8 @@ func main() {
 	for {
 		gameLoop(sock, members, selfName)
 		idleLoop()
+		sock = netSetup()
+		members, selfName = initializeMembers(os.Args[1])
 	}
 }
 
@@ -109,8 +113,14 @@ func logError(err error) bool {
 */
 func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 	go recvHeartBeat(sock, members)
+	go checkForExit(sock)
 
 	for {
+		// Check if quit
+		if QUIT == true {
+			return
+		}
+
 		//update hbc
 		entry := members[selfName]
 		entry.Hbc += 1
@@ -130,6 +140,18 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 	}
 }
 
+func checkForExit(sock *net.UDPConn) {
+	for {
+		userInput := handleCmdInput()
+
+		if strings.ToUpper(userInput) == "Q" || strings.ToUpper(userInput) == "QUIT" {
+			sock.Close()
+			QUIT = true
+			return
+		}
+	}
+}
+
 // mark failure if time.now - entry.timestamp > 5
 func checkFailure(members map[string]Entry) {
 	for member, _ := range members {
@@ -137,6 +159,9 @@ func checkFailure(members map[string]Entry) {
 		if (time.Now().Unix() - entry.Timestamp) >= 5 {
 			entry.Failure = true
 			members[member] = entry
+		}
+		if (time.Now().Unix() - entry.Timestamp) >= 10 {
+			delete(members, member)
 		}
 	}
 }
@@ -154,6 +179,7 @@ func idleLoop() {
 
 		if userInput == "1" {
 			fmt.Println("Joining contact point...")
+			QUIT = false
 			return
 		} else if userInput == "2" {
 			fmt.Println("Exited program")
@@ -185,17 +211,14 @@ func handleCmdInput() string {
  * @param buf the byte array containing the messages
  */
 func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
-	sock.Close()
 	for {
-		addr, err := net.ResolveUDPAddr("udp", ":"+PORT)
-		logError(err)
-
-		//Setup socket
-		sock, err = net.ListenUDP("udp", addr)
-		logError(err)
 		//we should change the byte length in the future
 		buf := make([]byte, RECV_BUF_LEN)
+
 		rlen, _, err := sock.ReadFromUDP(buf)
+		if QUIT == true {
+			return
+		}
 		logError(err)
 
 		//read from socket => newList
@@ -216,13 +239,8 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 			fmt.Print(":")
 			fmt.Println(receivedValue.Hbc)
 			if myValue, exists := myMembers[receivedKey]; exists {
-				//fmt.Println("coming here")
 				// Compare the hbc
 				if receivedValue.Hbc > myValue.Hbc {
-
-					//myValue.hbc = receivedValue.hbc
-					//myValue.timestamp = time.Now().Unix()
-					//myValue.failure = false
 					receivedValue.Timestamp = time.Now().Unix()
 					receivedValue.Failure = false
 					myMembers[receivedKey] = receivedValue
@@ -235,7 +253,6 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 				myMembers[receivedKey] = entry
 			}
 		}
-		sock.Close()
 	}
 }
 
