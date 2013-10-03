@@ -23,18 +23,11 @@ const (
 	K             = 3
 )
 
-type Message struct {
-	key       string `json:"key"`
-	hbc       int64  `json:"hbc"`
-	failure   bool   `json:"failure"`
-	timestamp int64  `json:"timestamp"`
-}
-
 //our individual entry in heartBeat
 type Entry struct {
-	hbc       int64
-	timestamp int64
-	failure   bool
+	Hbc       int64 `json:"Hbc"`
+	Timestamp int64 `json:"Timestamp"`
+	Failure   bool  `json:"Failure"`
 }
 
 func main() {
@@ -113,19 +106,20 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 	for {
 		//update hbc
 		entry := members[selfName]
-		entry.hbc += 1
-		entry.timestamp = time.Now().Unix()
+		entry.Hbc += 1
+		entry.Timestamp = time.Now().Unix()
 		members[selfName] = entry
 
 		checkFailure(members)
 		sendHeartBeat(members, selfName)
 		time.Sleep(2000 * time.Millisecond)
 
-		for member, _ := range members {
-			fmt.Print(member)
-			fmt.Print("=")
-			fmt.Println(members[member])
-		}
+		/*
+			for member, _ := range members {
+				fmt.Print(member)
+				fmt.Print("=")
+				fmt.Println(members[member])
+			}*/
 	}
 }
 
@@ -133,8 +127,8 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 func checkFailure(members map[string]Entry) {
 	for member, _ := range members {
 		entry := members[member]
-		if (time.Now().Unix() - entry.timestamp) >= 5 {
-			entry.failure = true
+		if (time.Now().Unix() - entry.Timestamp) >= 5 {
+			entry.Failure = true
 			members[member] = entry
 		}
 	}
@@ -190,24 +184,26 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 		//	2) else, do nothing
 		for receivedKey, _ := range receivedMembers {
 			receivedValue := receivedMembers[receivedKey]
-			fmt.Println(receivedKey)
+			fmt.Print(receivedKey)
+			fmt.Print(":")
+			fmt.Println(receivedValue.Hbc)
 			if myValue, exists := myMembers[receivedKey]; exists {
-				fmt.Println("coming here")
+				//fmt.Println("coming here")
 				// Compare the hbc
-				if receivedValue.hbc > myValue.hbc {
+				if receivedValue.Hbc > myValue.Hbc {
 
 					//myValue.hbc = receivedValue.hbc
 					//myValue.timestamp = time.Now().Unix()
 					//myValue.failure = false
-					receivedValue.timestamp = time.Now().Unix()
-					receivedValue.failure = false
+					receivedValue.Timestamp = time.Now().Unix()
+					receivedValue.Failure = false
 					myMembers[receivedKey] = receivedValue
 				}
 			} else {
 				var entry Entry
-				entry.failure = false
-				entry.hbc = receivedValue.hbc
-				entry.timestamp = time.Now().Unix()
+				entry.Failure = false
+				entry.Hbc = receivedValue.Hbc
+				entry.Timestamp = time.Now().Unix()
 				myMembers[receivedKey] = entry
 			}
 		}
@@ -225,7 +221,7 @@ func pickAdresses(members map[string]Entry, k int, selfName string) []string {
 	//pick k alive processes
 	for key, _ := range members {
 		entry := members[key]
-		if !entry.failure && key != selfName {
+		if !entry.Failure && key != selfName {
 			aliveMembers = append(aliveMembers, key)
 		}
 	}
@@ -257,20 +253,29 @@ func sendHeartBeat(members map[string]Entry, selfName string) {
 	kMembers := pickAdresses(members, K, selfName)
 	logError(err)
 	for i := range kMembers {
-		member := kMembers[i]
+		recipientId := kMembers[i]
 
 		//split to timestamp and ip address
-		a := strings.Split(member, "#")
+		a := strings.Split(recipientId, "#")
 		//memberIp = ip
-		memberIp := a[1]
+		recipientIp := a[1]
 		//retrieve a UDPaddr
-		memberAddr, err := net.ResolveUDPAddr("udp", memberIp+":"+PORT)
+		recipientAddr, err := net.ResolveUDPAddr("udp", recipientIp+":"+PORT)
 		logError(err)
 		//
-		conn, err := net.DialUDP("udp", nil, memberAddr)
+		conn, err := net.DialUDP("udp", nil, recipientAddr)
 		if !logError(err) {
 			conn.Write(b)
 			conn.Close()
 		}
 	}
+
+	/*
+		var receivedMembers map[string]Entry
+		err = json.Unmarshal(b[:], &receivedMembers)
+		for member, _ := range receivedMembers {
+			fmt.Print(member)
+			fmt.Print("=")
+			fmt.Println(receivedMembers[member])
+		}*/
 }
