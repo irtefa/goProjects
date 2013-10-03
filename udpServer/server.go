@@ -7,7 +7,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -33,8 +32,6 @@ type Entry struct {
 }
 
 func main() {
-	log.Println("Started udp daemon")
-
 	sock := netSetup()
 
 	idleLoop()
@@ -77,11 +74,17 @@ func initializeMembers(ip string) (map[string]Entry, string) {
 	var members map[string]Entry
 	members = make(map[string]Entry)
 	members[selfName] = entry
-	notifyContactPoint(members)
+
+	//log initialization
+	fmt.Print("START:")
+	fmt.Print(selfName + " started ")
+	fmt.Println(time.Now())
+
+	notifyContactPoint(members, selfName)
 	return members, selfName
 }
 
-func notifyContactPoint(members map[string]Entry) {
+func notifyContactPoint(members map[string]Entry, selfName string) {
 	b, err := json.Marshal(members)
 	//send to contact point
 	memberAddr, err := net.ResolveUDPAddr("udp", CONTACT_POINT+":"+PORT)
@@ -91,6 +94,10 @@ func notifyContactPoint(members map[string]Entry) {
 	if !logError(err) {
 		conn.Write(b)
 		conn.Close()
+		//log join
+		fmt.Print("JOIN:")
+		fmt.Print(selfName + " joined the system ")
+		fmt.Println(time.Now())
 	}
 }
 
@@ -99,7 +106,10 @@ func notifyContactPoint(members map[string]Entry) {
  */
 func logError(err error) bool {
 	if err != nil {
-		log.Println(err)
+		fmt.Print("ERROR:")
+		fmt.Print(err)
+		fmt.Print(" ")
+		fmt.Println(time.Now())
 		return true
 	}
 	return false
@@ -130,13 +140,6 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 		checkFailure(members)
 		sendHeartBeat(members, selfName)
 		time.Sleep(2000 * time.Millisecond)
-
-		/*
-			for member, _ := range members {
-				fmt.Print(member)
-				fmt.Print("=")
-				fmt.Println(members[member])
-			}*/
 	}
 }
 
@@ -157,37 +160,39 @@ func checkFailure(members map[string]Entry) {
 	for member, _ := range members {
 		entry := members[member]
 		if (time.Now().Unix() - entry.Timestamp) >= 5 {
-			entry.Failure = true
-			members[member] = entry
+			if !entry.Failure {
+				entry.Failure = true
+				members[member] = entry
+				//log mark failure
+				fmt.Print("FAILURE:")
+				fmt.Print(member + " is marked as failure ")
+				fmt.Println(time.Now())
+			}
 		}
 		if (time.Now().Unix() - entry.Timestamp) >= 10 {
 			delete(members, member)
+			//log delete
+			fmt.Print("DELETE:")
+			fmt.Print(member + " is deleted from the members list ")
+			fmt.Println(time.Now())
 		}
 	}
 }
 func idleLoop() {
 	// Check for rejoin. from cmd
 	for {
-		fmt.Println("Currently not connected to any membership")
-		fmt.Println("-------")
-		fmt.Println("OPTIONS")
-		fmt.Println("-------")
-		fmt.Println("1) Join membership (Contact the contact point)")
-		fmt.Println("2) Exit program")
-
 		userInput := handleCmdInput()
-
-		if userInput == "1" {
-			fmt.Println("Joining contact point...")
+		userInput = strings.ToUpper(userInput)
+		if userInput == "JOIN" {
 			QUIT = false
 			return
-		} else if userInput == "2" {
-			fmt.Println("Exited program")
+		} else if userInput == "LEAVE" {
+			fmt.Print("EXIT:Exited program ")
+			fmt.Println(time.Now())
 			os.Exit(0)
 		} else {
-			fmt.Println("Incorrect input")
-			fmt.Println("********************")
-			fmt.Println("********************")
+			fmt.Print("INPUTERROR:Incorrect input ")
+			fmt.Println(time.Now())
 		}
 	}
 }
@@ -197,7 +202,6 @@ func idleLoop() {
  */
 func handleCmdInput() string {
 	var userInput string
-	fmt.Print("   Command:")
 	fmt.Scanf("%s", &userInput)
 
 	return userInput
@@ -227,17 +231,15 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 		err = json.Unmarshal(buf[:rlen], &receivedMembers)
 		//logError(err)
 		if err != nil {
-			log.Println(err)
-			log.Println("unmarshalling failed")
+			fmt.Print("MARSHALFAIL:")
+			fmt.Print(err)
+			fmt.Println(time.Now())
 		}
 		//compare newList to mylist
 		//	1) if higher hbc, update mylist with new hbc and new timestamp
 		//	2) else, do nothing
 		for receivedKey, _ := range receivedMembers {
 			receivedValue := receivedMembers[receivedKey]
-			fmt.Print(receivedKey)
-			fmt.Print(":")
-			fmt.Println(receivedValue.Hbc)
 			if myValue, exists := myMembers[receivedKey]; exists {
 				// Compare the hbc
 				if receivedValue.Hbc > myValue.Hbc {
@@ -251,6 +253,10 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 				entry.Hbc = receivedValue.Hbc
 				entry.Timestamp = time.Now().Unix()
 				myMembers[receivedKey] = entry
+				//log joins
+				fmt.Print("JOIN:")
+				fmt.Print(receivedKey + " joined the system ")
+				fmt.Println(time.Now())
 			}
 		}
 	}
