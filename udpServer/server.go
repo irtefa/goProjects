@@ -19,7 +19,7 @@ import (
 const (
 	RECV_BUF_LEN  = 1024
 	PORT          = "8000"
-	CONTACT_POINT = "127.0.0.1"
+	CONTACT_POINT = "192.17.11.40"
 	K             = 3
 )
 
@@ -73,7 +73,21 @@ func initializeMembers(ip string) (map[string]Entry, string) {
 	var members map[string]Entry
 	members = make(map[string]Entry)
 	members[selfName] = entry
+	notifyContactPoint(members)
 	return members, selfName
+}
+
+func notifyContactPoint(members map[string]Entry) {
+	b, err := json.Marshal(members)
+	//send to contact point
+	memberAddr, err := net.ResolveUDPAddr("udp", CONTACT_POINT+":"+PORT)
+	logError(err)
+	//
+	conn, err := net.DialUDP("udp", nil, memberAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
+	}
 }
 
 /*
@@ -250,7 +264,7 @@ func sendHeartBeat(members map[string]Entry, selfName string) {
 		//memberIp = ip
 		memberIp := a[1]
 		//retrieve a UDPaddr
-		memberAddr, err := net.ResolveUDPAddr("udp", memberIp+":"+"9000")
+		memberAddr, err := net.ResolveUDPAddr("udp", memberIp+":"+PORT)
 		logError(err)
 		//
 		conn, err := net.DialUDP("udp", nil, memberAddr)
