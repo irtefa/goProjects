@@ -147,7 +147,9 @@ func checkForExit(sock *net.UDPConn) {
 	for {
 		userInput := handleCmdInput()
 
-		if strings.ToUpper(userInput) == "Q" || strings.ToUpper(userInput) == "QUIT" {
+		if strings.ToUpper(userInput) == "LEAVE" {
+			fmt.Print("EXIT:Exited program ")
+			fmt.Println(time.Now())
 			sock.Close()
 			QUIT = true
 			return
