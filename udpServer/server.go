@@ -343,13 +343,13 @@ func pickAdresses(members map[string]Entry, k int, selfName string) []string {
 	fmt.Println(randomIntArray)
 
 	j := 0
-	for i := range randomIntArray {
-		if j == k {
+	for j < k {
+		if j >= n {
 			return kMembers
-		} else {
-			kMembers = append(kMembers, aliveMembers[randomIntArray[j]])
-			j++
 		}
+
+		kMembers = append(kMembers, aliveMembers[randomIntArray[j]])
+		j++
 	}
 	return kMembers
 }
