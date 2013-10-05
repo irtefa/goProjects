@@ -29,6 +29,7 @@ type Entry struct {
 	Hbc       int64 `json:"Hbc"`
 	Timestamp int64 `json:"Timestamp"`
 	Failure   bool  `json:"Failure"`
+	Leave     bool  `json:"Leave"`
 }
 
 func main() {
@@ -68,7 +69,7 @@ func initializeMembers(ip string) (map[string]Entry, string) {
 	selfName := fmt.Sprint(t0, "#", ip)
 
 	//initialize Entry
-	entry := Entry{0, t0, false}
+	entry := Entry{0, t0, false, false}
 
 	//update list with self
 	var members map[string]Entry
@@ -124,10 +125,17 @@ func logError(err error) bool {
 func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 	go recvHeartBeat(sock, members)
 	go checkForExit(sock)
+	var waitDuration int64 = 500
 
 	for {
+		startTime := time.Now().Unix()
 		// Check if quit
 		if QUIT == true {
+			entry := members[selfName]
+			entry.Leave = true
+			entry.Timestamp = time.Now().Unix()
+			members[selfName] = entry
+			sendHeartBeat(members, selfName)
 			return
 		}
 
@@ -139,7 +147,10 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 
 		checkFailure(members)
 		sendHeartBeat(members, selfName)
-		time.Sleep(2000 * time.Millisecond)
+
+		//Wait proper amount
+		remainingTime := waitDuration - (time.Now().Unix() - startTime)
+		time.Sleep(time.Duration(remainingTime) * time.Millisecond)
 	}
 }
 
@@ -162,7 +173,12 @@ func checkFailure(members map[string]Entry) {
 	for member, _ := range members {
 		entry := members[member]
 		if (time.Now().Unix() - entry.Timestamp) >= 5 {
-			if !entry.Failure {
+			if entry.Leave {
+				delete(members, member)
+				fmt.Print("DELETE:")
+				fmt.Print(member + " is deleted from the members list due to leave ")
+				fmt.Println(time.Now())
+			} else if !entry.Failure {
 				entry.Failure = true
 				members[member] = entry
 				//log mark failure
@@ -175,7 +191,7 @@ func checkFailure(members map[string]Entry) {
 			delete(members, member)
 			//log delete
 			fmt.Print("DELETE:")
-			fmt.Print(member + " is deleted from the members list ")
+			fmt.Print(member + " is deleted from the members list due to failure")
 			fmt.Println(time.Now())
 		}
 	}
@@ -237,29 +253,53 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 			fmt.Print(err)
 			fmt.Println(time.Now())
 		}
+
 		//compare newList to mylist
 		//	1) if higher hbc, update mylist with new hbc and new timestamp
 		//	2) else, do nothing
 		for receivedKey, _ := range receivedMembers {
 			receivedValue := receivedMembers[receivedKey]
+
+			// If our current membership list contains the received member
 			if myValue, exists := myMembers[receivedKey]; exists {
-				// Compare the hbc
-				if receivedValue.Hbc > myValue.Hbc {
-					receivedValue.Timestamp = time.Now().Unix()
-					receivedValue.Failure = false
-					myMembers[receivedKey] = receivedValue
-				}
+				compareMembers(receivedKey, receivedValue, myValue, myMembers)
 			} else {
-				var entry Entry
-				entry.Failure = false
-				entry.Hbc = receivedValue.Hbc
-				entry.Timestamp = time.Now().Unix()
-				myMembers[receivedKey] = entry
-				//log joins
-				fmt.Print("JOIN:")
-				fmt.Print(receivedKey + " joined the system ")
-				fmt.Println(time.Now())
+				if receivedValue.Leave == false {
+					var entry Entry
+					entry.Failure = false
+					entry.Hbc = receivedValue.Hbc
+					entry.Timestamp = time.Now().Unix()
+					entry.Leave = receivedValue.Leave
+					myMembers[receivedKey] = entry
+
+					//log joins
+					fmt.Print("JOIN:")
+					fmt.Print(receivedKey + " joined the system ")
+					fmt.Println(time.Now())
+				}
 			}
+		}
+	}
+}
+
+func compareMembers(inputKey string, inputValue Entry, storedValue Entry, storedMembersList map[string]Entry) {
+	if inputValue.Leave == true {
+		if storedMembersList[inputKey].Leave == false {
+			entry := storedMembersList[inputKey]
+			entry.Leave = true
+			entry.Timestamp = time.Now.Unix()
+			storedMembersList[inputKey] = entry
+
+			//log leaves
+			fmt.Print("LEAVE:")
+			fmt.Print(inputKey + " left the system ")
+			fmt.Println(time.Now())
+		}
+	} else if inputValue.Hbc > storedValue.Hbc {
+		if storedMembersList[inputKey].Leave == false {
+			inputValue.Timestamp = time.Now().Unix()
+			inputValue.Failure = false
+			storedMembersList[inputKey] = inputValue
 		}
 	}
 }
@@ -322,13 +362,4 @@ func sendHeartBeat(members map[string]Entry, selfName string) {
 			conn.Close()
 		}
 	}
-
-	/*
-		var receivedMembers map[string]Entry
-		err = json.Unmarshal(b[:], &receivedMembers)
-		for member, _ := range receivedMembers {
-			fmt.Print(member)
-			fmt.Print("=")
-			fmt.Println(receivedMembers[member])
-		}*/
 }
