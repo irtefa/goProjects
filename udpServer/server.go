@@ -340,7 +340,6 @@ func pickAdresses(members map[string]Entry, k int, selfName string) []string {
 	r := RANDOM_NUMBERS
 
 	randomIntArray := r.Perm(n)
-	fmt.Println(randomIntArray)
 
 	j := 0
 	for j < k {
