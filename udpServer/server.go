@@ -19,10 +19,15 @@ const (
 	RECV_BUF_LEN  = 1024
 	PORT          = "8000"
 	CONTACT_POINT = "192.17.11.40"
-	K             = 3
+	K             = 1
 )
 
-var QUIT bool = false
+var (
+	QUIT       bool = false
+	DOWN_USAGE int  = 0
+	UP_USAGE   int  = 0
+	UDP_HEADER int  = 8
+)
 
 //our individual entry in heartBeat
 type Entry struct {
@@ -94,12 +99,21 @@ func notifyContactPoint(members map[string]Entry, selfName string) {
 	conn, err := net.DialUDP("udp", nil, memberAddr)
 	if !logError(err) {
 		conn.Write(b)
+		uploadDataUse(len(b))
 		conn.Close()
 		//log join
 		fmt.Print("JOIN:")
 		fmt.Print(selfName + " joined the system ")
 		fmt.Println(time.Now())
 	}
+}
+
+func uploadDataUse(byteUsed int) {
+	UP_USAGE = UP_USAGE + UDP_HEADER + byteUsed
+}
+
+func downloadDataUse(byteUsed int) {
+	DOWN_USAGE = DOWN_USAGE + UDP_HEADER + byteUsed
 }
 
 /*
@@ -123,6 +137,7 @@ func logError(err error) bool {
 4) Send heartbeats to k random members in list
 */
 func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
+	go checkDataUsage()
 	go recvHeartBeat(sock, members)
 	go checkForExit(sock)
 	var waitDuration int64 = 500
@@ -238,6 +253,7 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 		buf := make([]byte, RECV_BUF_LEN)
 
 		rlen, _, err := sock.ReadFromUDP(buf)
+		downloadDataUse(rlen)
 		if QUIT == true {
 			return
 		}
@@ -359,7 +375,26 @@ func sendHeartBeat(members map[string]Entry, selfName string) {
 		conn, err := net.DialUDP("udp", nil, recipientAddr)
 		if !logError(err) {
 			conn.Write(b)
+			uploadDataUse(len(b))
 			conn.Close()
 		}
+	}
+}
+
+func checkDataUsage() {
+	for {
+		time.Sleep(10 * time.Second)
+		//log times
+		fmt.Print("DOWNLOAD:")
+		fmt.Print(DOWN_USAGE)
+		fmt.Print(" ")
+		fmt.Println(time.Now())
+
+		fmt.Print("UPLOAD:")
+		fmt.Print(UP_USAGE)
+		fmt.Print(" ")
+		fmt.Println(time.Now())
+		DOWN_USAGE = 0
+		UP_USAGE = 0
 	}
 }
