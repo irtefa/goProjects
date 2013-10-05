@@ -23,10 +23,11 @@ const (
 )
 
 var (
-	QUIT       bool = false
-	DOWN_USAGE int  = 0
-	UP_USAGE   int  = 0
-	UDP_HEADER int  = 8
+	QUIT           bool       = false
+	DOWN_USAGE     int        = 0
+	UP_USAGE       int        = 0
+	UDP_HEADER     int        = 8
+	RANDOM_NUMBERS *rand.Rand = rand.New(rand.NewSource(time.Now().Unix()))
 )
 
 //our individual entry in heartBeat
@@ -140,7 +141,7 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 	go checkDataUsage()
 	go recvHeartBeat(sock, members)
 	go checkForExit(sock)
-	var waitDuration int64 = 500
+	var waitDuration int64 = 100
 
 	for {
 		startTime := time.Now().Unix()
@@ -336,8 +337,10 @@ func pickAdresses(members map[string]Entry, k int, selfName string) []string {
 	}
 	//shuffle
 	n := len(aliveMembers)
-	r := rand.New(rand.NewSource(time.Now().Unix()))
+	r := RANDOM_NUMBERS
+
 	randomIntArray := r.Perm(n)
+	fmt.Println(randomIntArray)
 
 	j := 0
 	for i := range randomIntArray {
