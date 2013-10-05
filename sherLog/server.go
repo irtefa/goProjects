@@ -52,16 +52,6 @@ func grepMyLog(conn net.Conn) {
 	n := bytes.Index(recvBuf, []byte{0})
 	s := string(recvBuf[:n])
 
-	//read what the log file is
-	metaDataInfo := []string{}
-	file, _ := os.Open("metadata.txt")
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		//fmt.Println(scanner.Text())
-		metaDataInfo = append(metaDataInfo, scanner.Text())
-	}
-
 	//check to see if this is a request from a unit test
 	env := "production"
 	if strings.HasPrefix(s, "test") {
@@ -71,7 +61,7 @@ func grepMyLog(conn net.Conn) {
 	//send the results back
 	var results string
 	if strings.EqualFold(env, "production") {
-		results = execGrep(s, metaDataInfo[1], metaDataInfo[0])
+		results = execGrep(s, os.Args[1], os.Args[2])
 	} else {
 		//generate random logs with rare, frequent and lines appearing in average frequency
 		genLogs()
