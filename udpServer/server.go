@@ -16,10 +16,9 @@ import (
 
 //some useful constants
 const (
-	RECV_BUF_LEN  = 1024
-	PORT          = "8000"
-	CONTACT_POINT = "192.17.11.40"
-	K             = 1
+	RECV_BUF_LEN = 1024
+	PORT         = "8000"
+	K            = 1
 )
 
 var (
@@ -28,6 +27,7 @@ var (
 	UP_USAGE       int        = 0
 	UDP_HEADER     int        = 8
 	RANDOM_NUMBERS *rand.Rand = rand.New(rand.NewSource(time.Now().Unix()))
+	CONTACT_POINT             = "192.17.11.40"
 )
 
 //our individual entry in heartBeat
@@ -39,6 +39,7 @@ type Entry struct {
 }
 
 func main() {
+	CONTACT_POINT = os.Args[2]
 	sock := netSetup()
 
 	idleLoop()
