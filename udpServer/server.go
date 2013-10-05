@@ -347,7 +347,7 @@ func pickAdresses(members map[string]Entry, k int, selfName string) []string {
 		if j == k {
 			return kMembers
 		} else {
-			kMembers = append(kMembers, aliveMembers[randomIntArray[j])
+			kMembers = append(kMembers, aliveMembers[randomIntArray[j]])
 			j++
 		}
 	}
