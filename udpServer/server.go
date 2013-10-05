@@ -287,7 +287,7 @@ func compareMembers(inputKey string, inputValue Entry, storedValue Entry, stored
 		if storedMembersList[inputKey].Leave == false {
 			entry := storedMembersList[inputKey]
 			entry.Leave = true
-			entry.Timestamp = time.Now.Unix()
+			entry.Timestamp = time.Now().Unix()
 			storedMembersList[inputKey] = entry
 
 			//log leaves
