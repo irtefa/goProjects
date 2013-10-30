@@ -23,9 +23,6 @@ const (
 
 var (
 	QUIT           bool       = false
-	DOWN_USAGE     int        = 0
-	UP_USAGE       int        = 0
-	UDP_HEADER     int        = 8
 	RANDOM_NUMBERS *rand.Rand = rand.New(rand.NewSource(time.Now().Unix()))
 	CONTACT_POINT             = "192.17.11.40"
 )
@@ -101,21 +98,12 @@ func notifyContactPoint(members map[string]Entry, selfName string) {
 	conn, err := net.DialUDP("udp", nil, memberAddr)
 	if !logError(err) {
 		conn.Write(b)
-		uploadDataUse(len(b))
 		conn.Close()
 		//log join
 		fmt.Print("JOIN:")
 		fmt.Print(selfName + " joined the system ")
 		fmt.Println(time.Now())
 	}
-}
-
-func uploadDataUse(byteUsed int) {
-	UP_USAGE = UP_USAGE + UDP_HEADER + byteUsed
-}
-
-func downloadDataUse(byteUsed int) {
-	DOWN_USAGE = DOWN_USAGE + UDP_HEADER + byteUsed
 }
 
 /*
@@ -139,7 +127,6 @@ func logError(err error) bool {
 4) Send heartbeats to k random members in list
 */
 func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
-	go checkDataUsage()
 	go recvHeartBeat(sock, members)
 	go checkForExit(sock)
 	var waitDuration int64 = 100
@@ -233,16 +220,6 @@ func idleLoop() {
 }
 
 /*
- * handle command line input
- */
-func handleCmdInput() string {
-	var userInput string
-	fmt.Scanf("%s", &userInput)
-
-	return userInput
-}
-
-/*
  * receives heartBeats from other machines
  * updates timestamps
  * @param rlen length of the message received
@@ -252,20 +229,17 @@ func handleCmdInput() string {
 func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 	for {
 		//we should change the byte length in the future
+		//First initialize connection
 		buf := make([]byte, RECV_BUF_LEN)
-
 		rlen, _, err := sock.ReadFromUDP(buf)
-		downloadDataUse(rlen)
 		if QUIT == true {
 			return
 		}
 		logError(err)
 
-		//read from socket => newList
-		//receivedMembers := []Message{}
+		//Second, setting up member information from retrieved value
 		var receivedMembers map[string]Entry
 		err = json.Unmarshal(buf[:rlen], &receivedMembers)
-		//logError(err)
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
 			fmt.Print(err)
@@ -378,26 +352,17 @@ func sendHeartBeat(members map[string]Entry, selfName string) {
 		conn, err := net.DialUDP("udp", nil, recipientAddr)
 		if !logError(err) {
 			conn.Write(b)
-			uploadDataUse(len(b))
 			conn.Close()
 		}
 	}
 }
 
-func checkDataUsage() {
-	for {
-		time.Sleep(10 * time.Second)
-		//log times
-		fmt.Print("DOWNLOAD:")
-		fmt.Print(DOWN_USAGE)
-		fmt.Print(" ")
-		fmt.Println(time.Now())
+/*
+ * handle command line input
+ */
+func handleCmdInput() string {
+	var userInput string
+	fmt.Scanf("%s", &userInput)
 
-		fmt.Print("UPLOAD:")
-		fmt.Print(UP_USAGE)
-		fmt.Print(" ")
-		fmt.Println(time.Now())
-		DOWN_USAGE = 0
-		UP_USAGE = 0
-	}
+	return userInput
 }
