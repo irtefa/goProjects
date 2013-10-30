@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+type Membership struct {
+	Id   string
+	List map[string]Entry
+}
+
 //our individual entry in heartBeat
 type Entry struct {
 	Hbc       int64 `json:"Hbc"`
@@ -16,10 +21,9 @@ type Entry struct {
 /*
  * Initialize members list with the self ip
  */
-func initializeMembers(ip string) (map[string]Entry, string) {
-	t0 := time.Now().Unix()
-
+func initializeMembers(ip string) Membership {
 	//create machine name with time#address
+	t0 := time.Now().Unix()
 	selfName := fmt.Sprint(t0, "#", ip)
 
 	//initialize Entry
@@ -36,29 +40,9 @@ func initializeMembers(ip string) (map[string]Entry, string) {
 	fmt.Println(time.Now())
 
 	notifyContactPoint(members, selfName)
-	return members, selfName
-}
 
-func compareMembers(inputKey string, inputValue Entry, storedValue Entry, storedMembersList map[string]Entry) {
-	if inputValue.Leave == true {
-		if storedMembersList[inputKey].Leave == false {
-			entry := storedMembersList[inputKey]
-			entry.Leave = true
-			entry.Timestamp = time.Now().Unix()
-			storedMembersList[inputKey] = entry
-
-			//log leaves
-			fmt.Print("LEAVE:")
-			fmt.Print(inputKey + " left the system ")
-			fmt.Println(time.Now())
-		}
-	} else if inputValue.Hbc > storedValue.Hbc {
-		if storedMembersList[inputKey].Leave == false {
-			inputValue.Timestamp = time.Now().Unix()
-			inputValue.Failure = false
-			storedMembersList[inputKey] = inputValue
-		}
-	}
+	membershipInfo := Membership{selfName, members}
+	return membershipInfo
 }
 
 /*

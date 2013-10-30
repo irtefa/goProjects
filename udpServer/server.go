@@ -28,17 +28,25 @@ var (
 
 func main() {
 	CONTACT_POINT = os.Args[2]
+	ip_addr_curr_machine := os.Args[1]
 	sock := netSetup()
 
 	idleLoop()
-	members, selfName := initializeMembers(os.Args[1])
+	membershipInfo := initializeMembers(ip_addr_curr_machine)
+
+	members := membershipInfo.List
+	selfName := membershipInfo.Id
 
 	// Joined for loop
 	for {
 		gameLoop(sock, members, selfName)
 		idleLoop()
 		sock = netSetup()
-		members, selfName = initializeMembers(os.Args[1])
+		//members, selfName = initializeMembers(ip_addr_curr_machine)
+		membershipInfo := initializeMembers(ip_addr_curr_machine)
+
+		members = membershipInfo.List
+		selfName = membershipInfo.Id
 	}
 }
 
