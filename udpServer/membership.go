@@ -38,7 +38,8 @@ func initializeMembers(ip string) Membership {
 	fmt.Print("START:")
 	fmt.Print(selfName + " started ")
 	fmt.Println(time.Now())
-
+	fmt.Print("This is my hash ")
+	fmt.Println(createHash(ip))
 	notifyContactPoint(members, selfName)
 
 	membershipInfo := Membership{selfName, members}

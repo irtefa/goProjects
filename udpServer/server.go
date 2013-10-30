@@ -72,7 +72,7 @@ func logError(err error) bool {
 */
 func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 	go recvHeartBeat(sock, members)
-	go checkForExit(sock)
+	go checkForExit(sock, members, selfName)
 	var waitDuration int64 = 100
 
 	for {
@@ -102,7 +102,7 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 	}
 }
 
-func checkForExit(sock *net.UDPConn) {
+func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string) {
 	for {
 		userInput := handleCmdInput()
 
@@ -112,6 +112,10 @@ func checkForExit(sock *net.UDPConn) {
 			sock.Close()
 			QUIT = true
 			return
+		} else if strings.ToUpper(userInput) == "NEXT" {
+			name, hash := findSuccessor(selfName, members)
+			fmt.Println("machine name " + name)
+			fmt.Println(hash)
 		}
 	}
 }

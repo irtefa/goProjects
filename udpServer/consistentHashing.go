@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"math"
+	"strings"
 )
 
 /*
@@ -20,19 +21,21 @@ func createHash(machineName string) uint32 {
 /*
  * find the successor machine and return its name (ipaddress#timestamp)
  */
-func findSuccessor(selfName string, members map[string]Entry) string {
+func findSuccessor(selfName string, members map[string]Entry) (string, uint32) {
 	var firstMachineHash uint32 = math.MaxUint32
 	var firstMachineName string
 	var successorName string = "none"
 	//setup hashing
 	h := crc32.NewIEEE()
 	//find machine's hash
-	h.Write([]byte(selfName))
+	selfIp := strings.Split(selfName, "#")[1]
+	h.Write([]byte(selfIp))
 	successorHash := h.Sum32() //assign itself to successorHash
+	//selfHash := successorHash
 	//find the next biggest number if there is none, return 0
 	for key, _ := range members {
-		h.Write([]byte(key))
-		v := h.Sum32()
+		memberIp := strings.Split(key, "#")[1]
+		v := createHash(memberIp)
 		//check for the successor
 		if v > successorHash {
 			successorHash = v
@@ -47,8 +50,8 @@ func findSuccessor(selfName string, members map[string]Entry) string {
 
 	//if no bigger machine return the smallest
 	if successorName == "none" {
-		return firstMachineName
+		return firstMachineName, firstMachineHash
 	} else {
-		return successorName
+		return successorName, successorHash
 	}
 }
