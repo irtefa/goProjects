@@ -104,6 +104,28 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 	}
 }
 
+func compareMembers(inputKey string, inputValue Entry, storedValue Entry, storedMembersList map[string]Entry) {
+	if inputValue.Leave == true {
+		if storedMembersList[inputKey].Leave == false {
+			entry := storedMembersList[inputKey]
+			entry.Leave = true
+			entry.Timestamp = time.Now().Unix()
+			storedMembersList[inputKey] = entry
+
+			//log leaves
+			fmt.Print("LEAVE:")
+			fmt.Print(inputKey + " left the system ")
+			fmt.Println(time.Now())
+		}
+	} else if inputValue.Hbc > storedValue.Hbc {
+		if storedMembersList[inputKey].Leave == false {
+			inputValue.Timestamp = time.Now().Unix()
+			inputValue.Failure = false
+			storedMembersList[inputKey] = inputValue
+		}
+	}
+}
+
 func notifyContactPoint(members map[string]Entry, selfName string) {
 	b, err := json.Marshal(members)
 	//send to contact point
