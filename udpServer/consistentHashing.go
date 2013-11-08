@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"hash/crc32"
 	"math"
 	"strings"
@@ -14,7 +13,7 @@ func createHash(machineName string) uint32 {
 	h := crc32.NewIEEE()
 	h.Write([]byte(machineName))
 	v := h.Sum32()
-	fmt.Println(v)
+	//fmt.Println(v)
 	return v
 }
 

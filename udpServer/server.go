@@ -5,6 +5,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"math/rand"
 	"net"
@@ -36,10 +37,12 @@ func main() {
 
 	members := membershipInfo.List
 	selfName := membershipInfo.Id
-
+	//initialize keyValue
+	myKeyValue := KeyValue{}
+	myKeyValue.data = make(map[uint32]interface{})
 	// Joined for loop
 	for {
-		gameLoop(sock, members, selfName)
+		gameLoop(sock, members, selfName, myKeyValue)
 		idleLoop()
 		sock = netSetup()
 		//members, selfName = initializeMembers(ip_addr_curr_machine)
@@ -70,9 +73,9 @@ func logError(err error) bool {
 3) Update membership list
 4) Send heartbeats to k random members in list
 */
-func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
+func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string, myKeyValue KeyValue) {
 	go recvHeartBeat(sock, members)
-	go checkForExit(sock, members, selfName)
+	go checkForExit(sock, members, selfName, myKeyValue)
 	var waitDuration int64 = 100
 
 	for {
@@ -102,20 +105,39 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 	}
 }
 
-func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string) {
+func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, myKeyValue KeyValue) {
 	for {
 		userInput := handleCmdInput()
+		commands := strings.Fields(userInput) //splits the input into an array
 
-		if strings.ToUpper(userInput) == "LEAVE" {
-			fmt.Print("LEAVE:Left the system ")
-			fmt.Println(time.Now())
-			sock.Close()
-			QUIT = true
-			return
-		} else if strings.ToUpper(userInput) == "NEXT" {
-			name, hash := findSuccessor(selfName, members)
-			fmt.Println("machine name " + name)
-			fmt.Println(hash)
+		switch command := strings.ToUpper(commands[0]); {
+		case command == "LEAVE":
+			{
+				fmt.Print("LEAVE:Left the system ")
+				fmt.Println(time.Now())
+				sock.Close()
+				QUIT = true
+				return
+			}
+		case command == "NEXT":
+			{
+				name, hash := findSuccessor(selfName, members)
+				fmt.Println("---Machine name: " + name)
+				fmt.Print("---Machine hash: ")
+				fmt.Println(hash)
+			}
+		case command == "INSERT":
+			{
+				key := commands[1]
+				value := commands[2]
+				//insert key value
+				myKeyValue.Insert(key, value)
+			}
+		case command == "LOOKUP":
+			{
+				key := commands[1]
+				fmt.Println(myKeyValue.Lookup(key))
+			}
 		}
 	}
 }
@@ -171,8 +193,7 @@ func idleLoop() {
  * handle command line input
  */
 func handleCmdInput() string {
-	var userInput string
-	fmt.Scanf("%s", &userInput)
-
-	return userInput
+	bio := bufio.NewReader(os.Stdin)
+	line, _ := bio.ReadString('\n')
+	return strings.TrimSuffix(line, "\n")
 }

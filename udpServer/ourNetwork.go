@@ -8,6 +8,18 @@ import (
 	"time"
 )
 
+type Message struct {
+	DataType string      `json:"DataType"`
+	Data     interface{} `json:"Data"`
+}
+
+func createMessage(DataType string, Data interface{}) Message {
+	var retMessage Message
+	retMessage.DataType = DataType
+	retMessage.Data = Data
+	return retMessage
+}
+
 func netSetup() *net.UDPConn {
 	//Setup address
 	addr, err := net.ResolveUDPAddr("udp", ":"+PORT)
@@ -27,7 +39,8 @@ func netSetup() *net.UDPConn {
  * @param message heartBeat, failure, timestamp
  */
 func sendHeartBeat(members map[string]Entry, selfName string) {
-	b, err := json.Marshal(members)
+	m := createMessage("gossip", members)
+	b, err := json.Marshal(m)
 	kMembers := pickAdresses(members, K, selfName)
 	logError(err)
 	for i := range kMembers {
@@ -68,8 +81,13 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 		logError(err)
 
 		//Second, setting up member information from retrieved value
+		var receivedMessage Message
 		var receivedMembers map[string]Entry
-		err = json.Unmarshal(buf[:rlen], &receivedMembers)
+		//err = json.Unmarshal(buf[:rlen], &receivedMembers)
+		err = json.Unmarshal(buf[:rlen], &receivedMessage)
+		if receivedMessage.DataType == "gossip" {
+			receivedMembers = receivedMessage.Data.(map[string]Entry)
+		}
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
 			fmt.Print(err)
