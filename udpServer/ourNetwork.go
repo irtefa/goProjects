@@ -145,7 +145,8 @@ func compareMembers(inputKey string, inputValue Entry, storedValue Entry, stored
 }
 
 func notifyContactPoint(members map[string]Entry, selfName string) {
-	b, err := json.Marshal(members)
+	m := createMessage("gossip", members)
+	b, err := json.Marshal(m)
 	//send to contact point
 	memberAddr, err := net.ResolveUDPAddr("udp", CONTACT_POINT+":"+PORT)
 	logError(err)
