@@ -163,6 +163,9 @@ func requestkvProtocolHandler(originIp string, selfName string, myKeyValue KeyVa
 	//delete the keys that were added to sendKeyValue
 
 	for key, _ := range deleteKeyValue {
+		fmt.Print("KEYVALUE: Transferred ")
+		fmt.Print(key)
+		fmt.Println(" to " + originIp)
 		delete(myKeyValue.data, key)
 	}
 
