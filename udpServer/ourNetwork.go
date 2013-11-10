@@ -82,42 +82,44 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 
 		//Second, setting up member information from retrieved value
 		var receivedMessage Message
-		var receivedMembers map[string]Entry
-		//err = json.Unmarshal(buf[:rlen], &receivedMembers)
 		err = json.Unmarshal(buf[:rlen], &receivedMessage)
 
 		if receivedMessage.Datatype == "gossip" {
-			receivedMembers = convertToEntryMap(receivedMessage.Data)
+			gossipProtocolHandler(receivedMessage.Data, myMembers)
 		}
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
 			fmt.Print(err)
 			fmt.Println(time.Now())
 		}
+	}
+}
 
-		//compare newList to mylist
-		//	1) if higher hbc, update mylist with new hbc and new timestamp
-		//	2) else, do nothing
-		for receivedKey, _ := range receivedMembers {
-			receivedValue := receivedMembers[receivedKey]
+func gossipProtocolHandler(receivedData interface{}, myMembers map[string]Entry) {
+	receivedMembers := convertToEntryMap(receivedData)
 
-			// If our current membership list contains the received member
-			if myValue, exists := myMembers[receivedKey]; exists {
-				compareMembers(receivedKey, receivedValue, myValue, myMembers)
-			} else {
-				if receivedValue.Leave == false {
-					var entry Entry
-					entry.Failure = false
-					entry.Hbc = receivedValue.Hbc
-					entry.Timestamp = time.Now().Unix()
-					entry.Leave = receivedValue.Leave
-					myMembers[receivedKey] = entry
+	//compare newList to mylist
+	//	1) if higher hbc, update mylist with new hbc and new timestamp
+	//	2) else, do nothing
+	for receivedKey, _ := range receivedMembers {
+		receivedValue := receivedMembers[receivedKey]
 
-					//log joins
-					fmt.Print("JOIN:")
-					fmt.Print(receivedKey + " joined the system ")
-					fmt.Println(time.Now())
-				}
+		// If our current membership list contains the received member
+		if myValue, exists := myMembers[receivedKey]; exists {
+			compareMembers(receivedKey, receivedValue, myValue, myMembers)
+		} else {
+			if receivedValue.Leave == false {
+				var entry Entry
+				entry.Failure = false
+				entry.Hbc = receivedValue.Hbc
+				entry.Timestamp = time.Now().Unix()
+				entry.Leave = receivedValue.Leave
+				myMembers[receivedKey] = entry
+
+				//log joins
+				fmt.Print("JOIN:")
+				fmt.Print(receivedKey + " joined the system ")
+				fmt.Println(time.Now())
 			}
 		}
 	}
