@@ -112,7 +112,6 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 				requestkvProtocolHandler(originIp, selfName, myKeyValue)
 			}
 		} else if receivedMessage.Datatype == "batchkeys" {
-			fmt.Println(receivedMessage.Data)
 			batchkeysProtocolHandler(receivedMessage.Data, myKeyValue)
 		}
 		if err != nil {
@@ -125,7 +124,7 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 
 //////
 func batchkeysProtocolHandler(receivedMessageData interface{}, myKeyValue KeyValue) {
-	fmt.Println("Going to update batch keys")
+	//fmt.Println("Going to update batch keys")
 	for key, value := range receivedMessageData.(map[string]interface{}) {
 		intKey, _ := strconv.Atoi(key)
 		myKeyValue.data[uint32(intKey)] = value
@@ -141,10 +140,14 @@ func requestkvProtocolHandler(originIp string, selfName string, myKeyValue KeyVa
 	var SendKeyValue map[string]interface{}
 	SendKeyValue = make(map[string]interface{})
 
+	var deleteKeyValue map[uint32]interface{}
+	deleteKeyValue = make(map[uint32]interface{})
+
 	if hashedOriginIp < hashedSelfIp {
 		for key, _ := range myKeyValue.data {
 			if key < hashedOriginIp {
 				SendKeyValue[strconv.Itoa(int(key))] = myKeyValue.data[key]
+				deleteKeyValue[key] = myKeyValue.data[key]
 			}
 		}
 	} else {
@@ -152,21 +155,22 @@ func requestkvProtocolHandler(originIp string, selfName string, myKeyValue KeyVa
 		for key, _ := range myKeyValue.data {
 			if key < hashedOriginIp && key > hashedSelfIp {
 				SendKeyValue[strconv.Itoa(int(key))] = myKeyValue.data[key]
+				deleteKeyValue[key] = myKeyValue.data[key]
 			}
 		}
 	}
 
 	//delete the keys that were added to sendKeyValue
-	/*
-		for key, _ := range SendKeyValue {
-			delete(myKeyValue.data, key)
-		}*/
+
+	for key, _ := range deleteKeyValue {
+		delete(myKeyValue.data, key)
+	}
 
 	//send sendKeyValue over the network
 	m := createMessage("batchkeys", SendKeyValue)
 
 	b, err := json.Marshal(m)
-	fmt.Println(m)
+
 	recipientAddr, err := net.ResolveUDPAddr("udp", originIp+":"+PORT)
 	logError(err)
 	conn, err := net.DialUDP("udp", nil, recipientAddr)
