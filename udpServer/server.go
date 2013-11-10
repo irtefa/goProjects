@@ -41,6 +41,7 @@ func main() {
 
 	for {
 		gameLoop(sock, members, selfName, myKeyValue)
+		leaveLogic(selfName, myKeyValue, members)
 		idleLoop()
 		sock, members, selfName = joinLogic(ip_addr_curr_machine, myKeyValue)
 	}
@@ -58,6 +59,46 @@ func joinLogic(ip_addr_curr_machine string, myKeyValue KeyValue) (*net.UDPConn, 
 	notifyContactPoint(members, selfName)
 
 	return sock, members, selfName
+}
+
+func leaveLogic(selfName string, myKeyValue KeyValue, members map[string]Entry) {
+	selfIp := strings.Split(selfName, "#")[1]
+	hashedSelfIp := createHash(selfIp)
+	successorName, _ := findSuccessor(hashedSelfIp, selfName, members)
+	successorIp := strings.Split(successorName, "#")[1]
+
+	var SendKeyValue map[string]interface{}
+	SendKeyValue = make(map[string]interface{})
+
+	var deleteKeyValue map[uint32]interface{}
+	deleteKeyValue = make(map[uint32]interface{})
+
+	for key, _ := range myKeyValue.data {
+		SendKeyValue[strconv.Itoa(int(key))] = myKeyValue.data[key]
+		deleteKeyValue[key] = myKeyValue.data[key]
+	}
+
+	//delete the keys that were added to sendKeyValue
+
+	for key, _ := range deleteKeyValue {
+		fmt.Print("KEYVALUE: Transferred ")
+		fmt.Print(key)
+		fmt.Println(" to " + successorIp)
+		delete(myKeyValue.data, key)
+	}
+
+	//send sendKeyValue over the network
+	m := createMessage("batchkeys", SendKeyValue)
+
+	b, err := json.Marshal(m)
+
+	recipientAddr, err := net.ResolveUDPAddr("udp", successorIp+":"+PORT)
+	logError(err)
+	conn, err := net.DialUDP("udp", nil, recipientAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
+	}
 }
 
 func requestKeys(selfName string, members map[string]Entry) {
