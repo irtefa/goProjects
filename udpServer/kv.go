@@ -23,8 +23,9 @@ func (kv KeyValue) Lookup(key string) interface{} {
 	return kv.data[intKey]
 }
 
-func (kv KeyValue) Update(key uint32, newValue interface{}) {
-	kv.data[key] = newValue
+func (kv KeyValue) Update(key string, newValue interface{}) {
+	intKey := createHash(key)
+	kv.data[intKey] = newValue
 }
 
 func (kv KeyValue) Delete(key uint32) {

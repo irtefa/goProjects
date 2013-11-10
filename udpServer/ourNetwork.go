@@ -145,13 +145,23 @@ func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, se
 	key := createHash(string(receivedData.Key))
 	selfIp := strings.Split(selfName, "#")[1]
 	// If it should be handled locally, use kv.go
-	machineName, _ := findSuccessor(key, selfName, myMembers)
-	machineIp := strings.Split(machineName, "#")[1]
-	if machineIp == selfIp {
-		myKeyValue.Insert(string(receivedData.Key), receivedData.Value)
+	targetName, _ := findSuccessor(key, selfName, myMembers)
+	targetIp := strings.Split(targetName, "#")[1]
+
+	if targetIp == selfIp {
+		if receivedData.Command == "insert" {
+			myKeyValue.Insert(string(receivedData.Key), receivedData.Value)
+		} else if receivedData.Command == "lookup" {
+			myKeyValue.Lookup(string(receivedData.Key))
+		} else if receivedData.Command == "update" {
+			myKeyValue.Update(string(receivedData.Key), receivedData.Value)
+		} else if receivedData.Command == "delete" {
+			myKeyValue.Delete(receivedData.Key)
+		}
 	} else {
-		sendKV(machineIp, receivedData)
+		sendKV(targetIp, receivedData)
 	}
+
 }
 
 func compareMembers(inputKey string, inputValue Entry, storedValue Entry, storedMembersList map[string]Entry) {
