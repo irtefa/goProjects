@@ -13,7 +13,6 @@ func createHash(machineName string) uint32 {
 	h := crc32.NewIEEE()
 	h.Write([]byte(machineName))
 	v := h.Sum32()
-	//fmt.Println(v)
 	return v
 }
 

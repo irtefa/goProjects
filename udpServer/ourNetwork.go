@@ -224,13 +224,26 @@ func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, se
 	if targetIp == selfIp {
 		if receivedData.Command == "insert" {
 			myKeyValue.Insert(string(receivedData.Key), receivedData.Value)
+			fmt.Print("INSERT: ")
+			fmt.Print(receivedData.Key)
+			fmt.Println(" was inserted from " + receivedData.Origin)
 		} else if receivedData.Command == "lookup" {
 			message := myKeyValue.Lookup(string(receivedData.Key))
 			sendMessageToOrigin(receivedData.Origin, message)
+			fmt.Print("LOOKUP: ")
+			fmt.Print(receivedData.Key)
+			fmt.Println(" was looked up from " + receivedData.Origin)
 		} else if receivedData.Command == "update" {
 			myKeyValue.Update(string(receivedData.Key), receivedData.Value)
+			fmt.Print("UPDATE: ")
+			fmt.Print(receivedData.Key)
+			fmt.Println(" was updated from " + receivedData.Origin)
 		} else if receivedData.Command == "delete" {
-			myKeyValue.Delete(receivedData.Key)
+			fmt.Println("deleting")
+			myKeyValue.Delete(string(receivedData.Key))
+			fmt.Print("DELETE: ")
+			fmt.Print(receivedData.Key)
+			fmt.Println(" was deleted from " + receivedData.Origin)
 		}
 	} else {
 		sendKV(targetIp, receivedData)

@@ -206,6 +206,22 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 				kvdata := KVData{"lookup", targetIp, uint32(key), 0}
 				sendKV(targetIp, kvdata)
 			}
+		case command == "DELETE":
+			{
+				key, _ := strconv.Atoi(commands[1])
+				targetIp := strings.Split(selfName, "#")[1]
+
+				kvdata := KVData{"delete", targetIp, uint32(key), 0}
+				sendKV(targetIp, kvdata)
+			}
+		case command == "UPDATE":
+			{
+				key, _ := strconv.Atoi(commands[1])
+				targetIp := strings.Split(selfName, "#")[1]
+
+				kvdata := KVData{"update", targetIp, uint32(key), commands[2]}
+				sendKV(targetIp, kvdata)
+			}
 		default:
 			{
 				fmt.Println("Incorrect command")
