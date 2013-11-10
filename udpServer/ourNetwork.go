@@ -112,6 +112,7 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 				requestkvProtocolHandler(originIp, selfName, myKeyValue)
 			}
 		} else if receivedMessage.Datatype == "batchkeys" {
+			fmt.Println(receivedMessage.Data)
 			batchkeysProtocolHandler(receivedMessage.Data, myKeyValue)
 		}
 		if err != nil {
@@ -124,10 +125,10 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 
 //////
 func batchkeysProtocolHandler(receivedMessageData interface{}, myKeyValue KeyValue) {
+	fmt.Println("Going to update batch keys")
 	for key, value := range receivedMessageData.(map[string]interface{}) {
 		intKey, _ := strconv.Atoi(key)
 		myKeyValue.data[uint32(intKey)] = value
-		fmt.Println("updating batch keys")
 	}
 }
 
