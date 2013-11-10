@@ -100,13 +100,17 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 		if receivedMessage.Datatype == "gossip" {
 			receivedMessageData := convertToEntryMap(receivedMessage.Data)
 			gossipProtocolHandler(receivedMessageData, myMembers)
+			FIRST_GOSSIP_RECIEVED = true
 		} else if receivedMessage.Datatype == "keyvalue" {
 			receivedMessageData := convertToKVData(receivedMessage.Data)
 			keyValueProtocolHandler(receivedMessageData, myMembers, selfName, myKeyValue)
 		} else if receivedMessage.Datatype == "string" {
 			fmt.Println(receivedMessage.Data.(string))
 		} else if receivedMessage.Datatype == "requestkv" {
-			requestkvProtocolHandler(selfName, myKeyValue)
+			originIp := receivedMessage.Data.(string)
+			if originIp != strings.Split(selfName, "#")[1] {
+				requestkvProtocolHandler(originIp, selfName, myKeyValue)
+			}
 		} else if receivedMessage.Datatype == "batchkeys" {
 			batchkeysProtocolHandler(receivedMessage.Data, myKeyValue)
 		}
@@ -128,34 +132,37 @@ func batchkeysProtocolHandler(receivedMessageData interface{}, myKeyValue KeyVal
 }
 
 //////
-func requestkvProtocolHandler(originName string, myKeyValue KeyValue) {
-	originIP := strings.Split(originName, "#")[1]
-	hashedOriginIP := createHash(originIP)
-	var sendKeyValue map[uint32]interface{}
+func requestkvProtocolHandler(originIp string, selfName string, myKeyValue KeyValue) {
+	hashedOriginIp := createHash(originIp)
+	var SendKeyValue map[string]interface{}
+	SendKeyValue = make(map[string]interface{})
 
 	//iterate and populate sendKeyValue with appropriate keys
 	for key, _ := range myKeyValue.data {
-		if key < hashedOriginIP {
-			sendKeyValue[key] = myKeyValue.data[key]
+		if key < hashedOriginIp {
+			SendKeyValue[strconv.Itoa(int(key))] = myKeyValue.data[key]
 		}
 	}
 
 	//delete the keys that were added to sendKeyValue
-	for key, _ := range sendKeyValue {
-		delete(myKeyValue.data, key)
-	}
+	/*
+		for key, _ := range SendKeyValue {
+			delete(myKeyValue.data, key)
+		}*/
 
 	//send sendKeyValue over the network
-	m := createMessage("batchkeys", sendKeyValue)
+	m := createMessage("batchkeys", SendKeyValue)
+
 	b, err := json.Marshal(m)
 
-	recipientAddr, err := net.ResolveUDPAddr("udp", originIP+":"+PORT)
+	recipientAddr, err := net.ResolveUDPAddr("udp", originIp+":"+PORT)
 	logError(err)
 	conn, err := net.DialUDP("udp", nil, recipientAddr)
 	if !logError(err) {
 		conn.Write(b)
 		conn.Close()
 	}
+
 }
 
 func gossipProtocolHandler(receivedMembers map[string]Entry, myMembers map[string]Entry) {
