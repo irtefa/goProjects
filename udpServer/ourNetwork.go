@@ -142,14 +142,12 @@ func gossipProtocolHandler(receivedMembers map[string]Entry, myMembers map[strin
 }
 
 func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, selfName string) {
-	fmt.Println("Data was received well KVDATA")
 	fmt.Println(receivedData)
 
 	//Determine type of command
-	// If it should be handled locally, use kv.go
 
-	// Else, find appropriate server for data using consistentHashing.go
-	//recipientIp := keyValueIP(selfName, members, key)
+	// If it should be handled locally, use kv.go
+	// else, send info to appropriate channel.
 }
 
 func compareMembers(inputKey string, inputValue Entry, storedValue Entry, storedMembersList map[string]Entry) {
@@ -210,15 +208,11 @@ func convertToEntryMap(genericData interface{}) map[string]Entry {
 	return members
 }
 
-func keyValueIP(selfName string, members map[string]Entry, key uint32) string {
-	machineName, _ := findSuccessor(selfName, members)
-	return strings.Split(machineName, "#")[1]
-}
-
 func convertToKVData(genericData interface{}) KVData {
 	command := genericData.(map[string]interface{})["Command"].(string)
+	origin := genericData.(map[string]interface{})["Origin"].(string)
 	key := genericData.(map[string]interface{})["Key"].(float64)
 	value := genericData.(map[string]interface{})["Value"]
 
-	return KVData{command, uint32(key), value}
+	return KVData{command, origin, uint32(key), value}
 }

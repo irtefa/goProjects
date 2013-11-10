@@ -2,6 +2,7 @@ package main
 
 type KVData struct {
 	Command string      `json:"Command"`
+	Origin  string      `json:"Origin"`
 	Key     uint32      `json:"Key"`
 	Value   interface{} `json:"Value"`
 }

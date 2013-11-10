@@ -142,7 +142,8 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 			{
 				name, _ := findSuccessor(selfName, members)
 				successorIp := strings.Split(name, "#")[1]
-				sendKV(successorIp, KVData{"insert", 325, "stuff"})
+				selfIp := strings.Split(selfName, "#")[1]
+				sendKV(successorIp, KVData{"insert", selfIp, 325, "stuff"})
 			}
 		}
 	}
