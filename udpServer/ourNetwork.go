@@ -145,7 +145,7 @@ func requestkvProtocolHandler(originIp string, selfName string, myKeyValue KeyVa
 
 	if hashedOriginIp < hashedSelfIp {
 		for key, _ := range myKeyValue.data {
-			if key < hashedOriginIp {
+			if key < hashedOriginIp || key > hashedSelfIp {
 				SendKeyValue[strconv.Itoa(int(key))] = myKeyValue.data[key]
 				deleteKeyValue[key] = myKeyValue.data[key]
 			}
