@@ -102,6 +102,8 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 		} else if receivedMessage.Datatype == "keyvalue" {
 			receivedMessageData := convertToKVData(receivedMessage.Data)
 			keyValueProtocolHandler(receivedMessageData, myMembers, selfName, myKeyValue)
+		} else if receivedMessage.Datatype == "string" {
+			fmt.Println(receivedMessage.Data.(string))
 		}
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
@@ -152,7 +154,8 @@ func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, se
 		if receivedData.Command == "insert" {
 			myKeyValue.Insert(string(receivedData.Key), receivedData.Value)
 		} else if receivedData.Command == "lookup" {
-			myKeyValue.Lookup(string(receivedData.Key))
+			message := myKeyValue.Lookup(string(receivedData.Key))
+			sendMessageToOrigin(receivedData.Origin, message)
 		} else if receivedData.Command == "update" {
 			myKeyValue.Update(string(receivedData.Key), receivedData.Value)
 		} else if receivedData.Command == "delete" {
@@ -162,6 +165,19 @@ func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, se
 		sendKV(targetIp, receivedData)
 	}
 
+}
+
+func sendMessageToOrigin(targetIp string, message interface{}) {
+	m := createMessage("string", message)
+	b, err := json.Marshal(m)
+
+	recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+	logError(err)
+	conn, err := net.DialUDP("udp", nil, recipientAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
+	}
 }
 
 func compareMembers(inputKey string, inputValue Entry, storedValue Entry, storedMembersList map[string]Entry) {
