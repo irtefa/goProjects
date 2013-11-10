@@ -1,9 +1,5 @@
 package main
 
-import (
-	"fmt"
-)
-
 type KVData struct {
 	Command string      `json:"Command"`
 	Origin  string      `json:"Origin"`
@@ -16,15 +12,15 @@ type KeyValue struct {
 }
 
 func (kv KeyValue) Insert(key string, value interface{}) {
-	//stringyKey := fmt.Sprintf("%s", key)
 	intKey := createHash(key)
-	fmt.Println(intKey)
 	kv.data[intKey] = value
 }
 
 func (kv KeyValue) Lookup(key string) interface{} {
-	//stringyKey := fmt.Sprintf("%s", key)
 	intKey := createHash(key)
+	if kv.data[intKey] == nil {
+		return "Key not found"
+	}
 	return kv.data[intKey]
 }
 
@@ -33,6 +29,7 @@ func (kv KeyValue) Update(key string, newValue interface{}) {
 	kv.data[intKey] = newValue
 }
 
-func (kv KeyValue) Delete(key uint32) {
-	delete(kv.data, key)
+func (kv KeyValue) Delete(key string) {
+	intKey := createHash(key)
+	delete(kv.data, intKey)
 }
