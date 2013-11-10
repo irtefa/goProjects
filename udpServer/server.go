@@ -145,6 +145,10 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 				selfIp := strings.Split(selfName, "#")[1]
 				sendKV(successorIp, KVData{"insert", selfIp, 325, "stuff"})
 			}
+		default:
+			{
+				fmt.Println("Incorrect command")
+			}
 		}
 	}
 }
