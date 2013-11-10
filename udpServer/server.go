@@ -180,51 +180,75 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 		userInput := handleCmdInput()
 		commands := strings.Fields(userInput) //splits the input into an array
 
-		switch command := strings.ToUpper(commands[0]); {
-		case command == "LEAVE":
-			{
-				fmt.Print("LEAVE:Left the system ")
-				fmt.Println(time.Now())
-				sock.Close()
-				QUIT = true
-				return
-			}
-		case command == "INSERT":
-			{
-				key, _ := strconv.Atoi(commands[1])
-				value := commands[2]
-				targetIp := strings.Split(selfName, "#")[1]
+		if len(commands) != 0 {
+			switch command := strings.ToUpper(commands[0]); {
+			case command == "LEAVE":
+				{
+					fmt.Print("LEAVE:Left the system ")
+					fmt.Println(time.Now())
+					sock.Close()
+					QUIT = true
+					return
+				}
+			case command == "INSERT":
+				{
+					key, _ := strconv.Atoi(commands[1])
+					value := commands[2]
+					targetIp := strings.Split(selfName, "#")[1]
 
-				kvdata := KVData{"insert", targetIp, uint32(key), value}
-				sendKV(targetIp, kvdata)
-			}
-		case command == "LOOKUP":
-			{
-				key, _ := strconv.Atoi(commands[1])
-				targetIp := strings.Split(selfName, "#")[1]
+					kvdata := KVData{"insert", targetIp, uint32(key), value}
+					sendKV(targetIp, kvdata)
+				}
+			case command == "LOOKUP":
+				{
+					key, _ := strconv.Atoi(commands[1])
+					targetIp := strings.Split(selfName, "#")[1]
 
-				kvdata := KVData{"lookup", targetIp, uint32(key), 0}
-				sendKV(targetIp, kvdata)
-			}
-		case command == "DELETE":
-			{
-				key, _ := strconv.Atoi(commands[1])
-				targetIp := strings.Split(selfName, "#")[1]
+					kvdata := KVData{"lookup", targetIp, uint32(key), 0}
+					sendKV(targetIp, kvdata)
+				}
+			case command == "DELETE":
+				{
+					key, _ := strconv.Atoi(commands[1])
+					targetIp := strings.Split(selfName, "#")[1]
 
-				kvdata := KVData{"delete", targetIp, uint32(key), 0}
-				sendKV(targetIp, kvdata)
-			}
-		case command == "UPDATE":
-			{
-				key, _ := strconv.Atoi(commands[1])
-				targetIp := strings.Split(selfName, "#")[1]
+					kvdata := KVData{"delete", targetIp, uint32(key), 0}
+					sendKV(targetIp, kvdata)
+				}
+			case command == "UPDATE":
+				{
+					key, _ := strconv.Atoi(commands[1])
+					targetIp := strings.Split(selfName, "#")[1]
 
-				kvdata := KVData{"update", targetIp, uint32(key), commands[2]}
-				sendKV(targetIp, kvdata)
-			}
-		default:
-			{
-				fmt.Println("Incorrect command")
+					kvdata := KVData{"update", targetIp, uint32(key), commands[2]}
+					sendKV(targetIp, kvdata)
+				}
+			case command == "SHOW":
+				{
+					fmt.Println()
+					fmt.Println("Showing all key|values")
+					fmt.Println("======================")
+					for hashedKey, _ := range myKeyValue.data {
+						fmt.Print("Hashed key: ")
+						fmt.Print(hashedKey)
+						fmt.Print(" | value: ")
+						fmt.Print(myKeyValue.data[hashedKey])
+						fmt.Println("")
+					}
+					fmt.Println()
+					fmt.Println("****")
+					fmt.Println()
+					fmt.Println("Membership list")
+					fmt.Println("======================")
+					for membername, _ := range members {
+						fmt.Println(membername)
+					}
+					fmt.Println()
+				}
+			default:
+				{
+					fmt.Println("Incorrect command")
+				}
 			}
 		}
 	}
