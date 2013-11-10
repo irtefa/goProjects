@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -74,7 +75,7 @@ func logError(err error) bool {
 4) Send heartbeats to k random members in list
 */
 func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string, myKeyValue KeyValue) {
-	go recvHeartBeat(sock, members, selfName)
+	go recvHeartBeat(sock, members, selfName, myKeyValue)
 	go checkForExit(sock, members, selfName, myKeyValue)
 	var waitDuration int64 = 100
 
@@ -119,31 +120,19 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 				QUIT = true
 				return
 			}
-		case command == "NEXT":
-			{
-				name, hash := findSuccessor(selfName, members)
-				fmt.Println("---Machine name: " + name)
-				fmt.Print("---Machine hash: ")
-				fmt.Println(hash)
-			}
 		case command == "INSERT":
 			{
-				key := commands[1]
+				key, _ := strconv.Atoi(commands[1])
 				value := commands[2]
-				//insert key value
-				myKeyValue.Insert(key, value)
+				targetIp := strings.Split(selfName, "#")[1]
+
+				kvdata := KVData{"insert", targetIp, uint32(key), value}
+				sendKV(targetIp, kvdata)
 			}
 		case command == "LOOKUP":
 			{
-				key := commands[1]
-				fmt.Println(myKeyValue.Lookup(key))
-			}
-		case command == "TESTKVSEND":
-			{
-				name, _ := findSuccessor(selfName, members)
-				successorIp := strings.Split(name, "#")[1]
-				selfIp := strings.Split(selfName, "#")[1]
-				sendKV(successorIp, KVData{"insert", selfIp, 325, "stuff"})
+				key, _ := strconv.Atoi(commands[1])
+				fmt.Println(myKeyValue.Lookup(string(uint32(key))))
 			}
 		default:
 			{

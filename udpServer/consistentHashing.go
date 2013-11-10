@@ -18,9 +18,9 @@ func createHash(machineName string) uint32 {
 }
 
 /*
- * find the successor machine and return its name (ipaddress#timestamp)
+ * find the successor machine and return its name (ipaddress#timestamp) return true if it should be handled locally
  */
-func findSuccessor(selfName string, members map[string]Entry) (string, uint32) {
+func findSuccessor(k uint32, selfName string, members map[string]Entry) (string, uint32) {
 	var firstMachineHash uint32 = math.MaxUint32
 	var firstMachineName string
 	var successorName string = "none"
@@ -36,7 +36,7 @@ func findSuccessor(selfName string, members map[string]Entry) (string, uint32) {
 		memberIp := strings.Split(key, "#")[1]
 		v := createHash(memberIp)
 		//check for the successor
-		if v > successorHash {
+		if v > k {
 			successorHash = v
 			successorName = key
 		}
@@ -50,6 +50,8 @@ func findSuccessor(selfName string, members map[string]Entry) (string, uint32) {
 	//if no bigger machine return the smallest
 	if successorName == "none" {
 		return firstMachineName, firstMachineHash
+	} else if successorName == selfName {
+		return selfName, successorHash
 	} else {
 		return successorName, successorHash
 	}

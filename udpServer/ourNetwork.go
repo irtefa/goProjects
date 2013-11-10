@@ -81,7 +81,7 @@ func sendKV(targetIp string, data KVData) {
  * @param remote address of the machine that sent the heartBeat
  * @param buf the byte array containing the messages
  */
-func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName string) {
+func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName string, myKeyValue KeyValue) {
 	for {
 		//we should change the byte length in the future
 		//First initialize connection
@@ -101,7 +101,7 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 			gossipProtocolHandler(receivedMessageData, myMembers)
 		} else if receivedMessage.Datatype == "keyvalue" {
 			receivedMessageData := convertToKVData(receivedMessage.Data)
-			keyValueProtocolHandler(receivedMessageData, myMembers, selfName)
+			keyValueProtocolHandler(receivedMessageData, myMembers, selfName, myKeyValue)
 		}
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
@@ -141,13 +141,17 @@ func gossipProtocolHandler(receivedMembers map[string]Entry, myMembers map[strin
 	}
 }
 
-func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, selfName string) {
-	fmt.Println(receivedData)
-
-	//Determine type of command
-
+func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, selfName string, myKeyValue KeyValue) {
+	key := createHash(string(receivedData.Key))
+	selfIp := strings.Split(selfName, "#")[1]
 	// If it should be handled locally, use kv.go
-	// else, send info to appropriate channel.
+	machineName, _ := findSuccessor(key, selfName, myMembers)
+	machineIp := strings.Split(machineName, "#")[1]
+	if machineIp == selfIp {
+		myKeyValue.Insert(string(receivedData.Key), receivedData.Value)
+	} else {
+		sendKV(machineIp, receivedData)
+	}
 }
 
 func compareMembers(inputKey string, inputValue Entry, storedValue Entry, storedMembersList map[string]Entry) {
