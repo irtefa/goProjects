@@ -135,13 +135,24 @@ func batchkeysProtocolHandler(receivedMessageData interface{}, myKeyValue KeyVal
 //////
 func requestkvProtocolHandler(originIp string, selfName string, myKeyValue KeyValue) {
 	hashedOriginIp := createHash(originIp)
+	selfIp := strings.Split(selfName, "#")[1]
+	hashedSelfIp := createHash(selfIp)
+
 	var SendKeyValue map[string]interface{}
 	SendKeyValue = make(map[string]interface{})
 
-	//iterate and populate sendKeyValue with appropriate keys
-	for key, _ := range myKeyValue.data {
-		if key < hashedOriginIp {
-			SendKeyValue[strconv.Itoa(int(key))] = myKeyValue.data[key]
+	if hashedOriginIp < hashedSelfIp {
+		for key, _ := range myKeyValue.data {
+			if key < hashedOriginIp {
+				SendKeyValue[strconv.Itoa(int(key))] = myKeyValue.data[key]
+			}
+		}
+	} else {
+		//iterate and populate sendKeyValue with appropriate keys
+		for key, _ := range myKeyValue.data {
+			if key < hashedOriginIp && key > hashedSelfIp {
+				SendKeyValue[strconv.Itoa(int(key))] = myKeyValue.data[key]
+			}
 		}
 	}
 
@@ -155,7 +166,7 @@ func requestkvProtocolHandler(originIp string, selfName string, myKeyValue KeyVa
 	m := createMessage("batchkeys", SendKeyValue)
 
 	b, err := json.Marshal(m)
-
+	fmt.Println(m)
 	recipientAddr, err := net.ResolveUDPAddr("udp", originIp+":"+PORT)
 	logError(err)
 	conn, err := net.DialUDP("udp", nil, recipientAddr)
