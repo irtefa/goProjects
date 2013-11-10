@@ -31,27 +31,28 @@ var (
 func main() {
 	CONTACT_POINT = os.Args[2]
 	ip_addr_curr_machine := os.Args[1]
-	sock := netSetup()
-
-	idleLoop()
-	membershipInfo := initializeMembers(ip_addr_curr_machine)
-
-	members := membershipInfo.List
-	selfName := membershipInfo.Id
-	//initialize keyValue
 	myKeyValue := KeyValue{}
 	myKeyValue.data = make(map[uint32]interface{})
-	// Joined for loop
+
+	idleLoop()
+	sock, members, selfName := joinLogic(ip_addr_curr_machine, myKeyValue)
+
 	for {
 		gameLoop(sock, members, selfName, myKeyValue)
 		idleLoop()
-		sock = netSetup()
-		//members, selfName = initializeMembers(ip_addr_curr_machine)
-		membershipInfo := initializeMembers(ip_addr_curr_machine)
-
-		members = membershipInfo.List
-		selfName = membershipInfo.Id
+		joinLogic(ip_addr_curr_machine, myKeyValue)
 	}
+}
+
+func joinLogic(ip_addr_curr_machine string, myKeyValue KeyValue) (*net.UDPConn, map[string]Entry, string) {
+	sock := netSetup()
+
+	membershipInfo := initializeMembers(ip_addr_curr_machine)
+	members := membershipInfo.List
+	selfName := membershipInfo.Id
+	notifyContactPoint(members, selfName)
+
+	return sock, members, selfName
 }
 
 /*
