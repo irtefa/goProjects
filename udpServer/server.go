@@ -6,6 +6,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
@@ -23,9 +24,10 @@ const (
 )
 
 var (
-	QUIT           bool       = false
-	RANDOM_NUMBERS *rand.Rand = rand.New(rand.NewSource(time.Now().Unix()))
-	CONTACT_POINT             = "192.17.11.40"
+	QUIT                  bool       = false
+	RANDOM_NUMBERS        *rand.Rand = rand.New(rand.NewSource(time.Now().Unix()))
+	CONTACT_POINT                    = "192.17.11.40"
+	FIRST_GOSSIP_RECIEVED            = false
 )
 
 func main() {
@@ -40,12 +42,15 @@ func main() {
 	for {
 		gameLoop(sock, members, selfName, myKeyValue)
 		idleLoop()
-		joinLogic(ip_addr_curr_machine, myKeyValue)
+		sock, members, selfName = joinLogic(ip_addr_curr_machine, myKeyValue)
 	}
 }
 
 func joinLogic(ip_addr_curr_machine string, myKeyValue KeyValue) (*net.UDPConn, map[string]Entry, string) {
 	sock := netSetup()
+
+	FIRST_GOSSIP_RECIEVED = false
+	QUIT = false
 
 	membershipInfo := initializeMembers(ip_addr_curr_machine)
 	members := membershipInfo.List
@@ -53,6 +58,24 @@ func joinLogic(ip_addr_curr_machine string, myKeyValue KeyValue) (*net.UDPConn, 
 	notifyContactPoint(members, selfName)
 
 	return sock, members, selfName
+}
+
+func requestKeys(selfName string, members map[string]Entry) {
+	selfIp := strings.Split(selfName, "#")[1]
+	hashedSelfIp := createHash(selfIp)
+	successorName, _ := findSuccessor(hashedSelfIp, selfName, members)
+	targetIp := strings.Split(successorName, "#")[1]
+
+	m := createMessage("requestkv", selfIp)
+	b, err := json.Marshal(m)
+
+	recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+	logError(err)
+	conn, err := net.DialUDP("udp", nil, recipientAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
+	}
 }
 
 /*
@@ -90,6 +113,10 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string, myKe
 			members[selfName] = entry
 			sendHeartBeat(members, selfName)
 			return
+		}
+
+		if FIRST_GOSSIP_RECIEVED == true {
+			requestKeys(selfName, members)
 		}
 
 		//update hbc

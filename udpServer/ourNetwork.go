@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -104,12 +105,56 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 			keyValueProtocolHandler(receivedMessageData, myMembers, selfName, myKeyValue)
 		} else if receivedMessage.Datatype == "string" {
 			fmt.Println(receivedMessage.Data.(string))
+		} else if receivedMessage.Datatype == "requestkv" {
+			requestkvProtocolHandler(selfName, myKeyValue)
+		} else if receivedMessage.Datatype == "batchkeys" {
+			batchkeysProtocolHandler(receivedMessage.Data, myKeyValue)
 		}
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
 			fmt.Print(err)
 			fmt.Println(time.Now())
 		}
+	}
+}
+
+//////
+func batchkeysProtocolHandler(receivedMessageData interface{}, myKeyValue KeyValue) {
+	for key, value := range receivedMessageData.(map[string]interface{}) {
+		intKey, _ := strconv.Atoi(key)
+		myKeyValue.data[uint32(intKey)] = value
+		fmt.Println("updating batch keys")
+	}
+}
+
+//////
+func requestkvProtocolHandler(originName string, myKeyValue KeyValue) {
+	originIP := strings.Split(originName, "#")[1]
+	hashedOriginIP := createHash(originIP)
+	var sendKeyValue map[uint32]interface{}
+
+	//iterate and populate sendKeyValue with appropriate keys
+	for key, _ := range myKeyValue.data {
+		if key < hashedOriginIP {
+			sendKeyValue[key] = myKeyValue.data[key]
+		}
+	}
+
+	//delete the keys that were added to sendKeyValue
+	for key, _ := range sendKeyValue {
+		delete(myKeyValue.data, key)
+	}
+
+	//send sendKeyValue over the network
+	m := createMessage("batchkeys", sendKeyValue)
+	b, err := json.Marshal(m)
+
+	recipientAddr, err := net.ResolveUDPAddr("udp", originIP+":"+PORT)
+	logError(err)
+	conn, err := net.DialUDP("udp", nil, recipientAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
 	}
 }
 
