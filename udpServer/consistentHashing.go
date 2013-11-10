@@ -26,6 +26,9 @@ func findSuccessor(hashedKey uint32, selfName string, members map[string]Entry) 
 	var successorName string = "none"
 	var successorHash uint32
 
+	var smallestSeenHash uint32
+	smallestSeenHash = math.MaxUint32
+
 	//setup hashing
 	h := crc32.NewIEEE()
 	//find machine's hash
@@ -41,9 +44,10 @@ func findSuccessor(hashedKey uint32, selfName string, members map[string]Entry) 
 
 		//check for the successor
 		if memberHash > hashedKey {
-			if memberHash < successorHash {
+			if memberHash < smallestSeenHash {
 				successorHash = memberHash
 				successorName = member
+				smallestSeenHash = memberHash
 			}
 		}
 		//update smallest machine

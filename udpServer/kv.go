@@ -1,5 +1,9 @@
 package main
 
+import (
+	"fmt"
+)
+
 type KVData struct {
 	Command string      `json:"Command"`
 	Origin  string      `json:"Origin"`
@@ -14,6 +18,7 @@ type KeyValue struct {
 func (kv KeyValue) Insert(key string, value interface{}) {
 	//stringyKey := fmt.Sprintf("%s", key)
 	intKey := createHash(key)
+	fmt.Println(intKey)
 	kv.data[intKey] = value
 }
 
