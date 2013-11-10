@@ -30,6 +30,9 @@ const (
 func main() {
 	if len(os.Args) < 5 {
 		fmt.Println("Not enough arguments")
+		fmt.Println("Correct format is:")
+		fmt.Println("-----")
+		fmt.Println("<self_ip> <contact_ip> <command> <key> <value=optional>")
 		return
 	}
 
@@ -73,7 +76,14 @@ func main() {
 	}
 
 	if strings.ToUpper(command) == "LOOKUP" {
+		// Initialize benchmark time
+		t0 := time.Now()
+
 		waitForResponse()
+
+		t1 := time.Now()
+		fmt.Print("Lookup took: ")
+		fmt.Println(t1.Sub(t0))
 	}
 }
 
