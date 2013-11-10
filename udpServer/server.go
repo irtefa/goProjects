@@ -133,6 +133,10 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 			{
 				key, _ := strconv.Atoi(commands[1])
 				fmt.Println(myKeyValue.Lookup(string(uint32(key))))
+				targetIp := strings.Split(selfName, "#")[1]
+
+				kvdata := KVData{"lookup", targetIp, uint32(key), 0}
+				sendKV(targetIp, kvdata)
 			}
 		default:
 			{
