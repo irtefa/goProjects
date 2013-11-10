@@ -1,5 +1,11 @@
 package main
 
+type KVData struct {
+	Command string      `json:"Command"`
+	Key     uint32      `json:"Key"`
+	Value   interface{} `json:"Value"`
+}
+
 type KeyValue struct {
 	data map[uint32]interface{}
 }

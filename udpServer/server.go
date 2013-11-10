@@ -74,7 +74,7 @@ func logError(err error) bool {
 4) Send heartbeats to k random members in list
 */
 func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string, myKeyValue KeyValue) {
-	go recvHeartBeat(sock, members)
+	go recvHeartBeat(sock, members, selfName)
 	go checkForExit(sock, members, selfName, myKeyValue)
 	var waitDuration int64 = 100
 
@@ -137,6 +137,12 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 			{
 				key := commands[1]
 				fmt.Println(myKeyValue.Lookup(key))
+			}
+		case command == "TESTKVSEND":
+			{
+				name, _ := findSuccessor(selfName, members)
+				successorIp := strings.Split(name, "#")[1]
+				sendKV(successorIp, KVData{"insert", 325, "stuff"})
 			}
 		}
 	}

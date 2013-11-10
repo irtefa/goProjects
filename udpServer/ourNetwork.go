@@ -53,12 +53,24 @@ func sendHeartBeat(members map[string]Entry, selfName string) {
 		//retrieve a UDPaddr
 		recipientAddr, err := net.ResolveUDPAddr("udp", recipientIp+":"+PORT)
 		logError(err)
-		//
 		conn, err := net.DialUDP("udp", nil, recipientAddr)
 		if !logError(err) {
 			conn.Write(b)
 			conn.Close()
 		}
+	}
+}
+
+func sendKV(targetIp string, data KVData) {
+	m := createMessage("keyvalue", data)
+	b, err := json.Marshal(m)
+
+	recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+	logError(err)
+	conn, err := net.DialUDP("udp", nil, recipientAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
 	}
 }
 
@@ -69,7 +81,7 @@ func sendHeartBeat(members map[string]Entry, selfName string) {
  * @param remote address of the machine that sent the heartBeat
  * @param buf the byte array containing the messages
  */
-func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
+func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName string) {
 	for {
 		//we should change the byte length in the future
 		//First initialize connection
@@ -85,7 +97,11 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 		err = json.Unmarshal(buf[:rlen], &receivedMessage)
 
 		if receivedMessage.Datatype == "gossip" {
-			gossipProtocolHandler(receivedMessage.Data, myMembers)
+			receivedMessageData := convertToEntryMap(receivedMessage.Data)
+			gossipProtocolHandler(receivedMessageData, myMembers)
+		} else if receivedMessage.Datatype == "keyvalue" {
+			receivedMessageData := convertToKVData(receivedMessage.Data)
+			keyValueProtocolHandler(receivedMessageData, myMembers, selfName)
 		}
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
@@ -95,8 +111,8 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 	}
 }
 
-func gossipProtocolHandler(receivedData interface{}, myMembers map[string]Entry) {
-	receivedMembers := convertToEntryMap(receivedData)
+func gossipProtocolHandler(receivedMembers map[string]Entry, myMembers map[string]Entry) {
+	/////
 
 	//compare newList to mylist
 	//	1) if higher hbc, update mylist with new hbc and new timestamp
@@ -123,6 +139,17 @@ func gossipProtocolHandler(receivedData interface{}, myMembers map[string]Entry)
 			}
 		}
 	}
+}
+
+func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, selfName string) {
+	fmt.Println("Data was received well KVDATA")
+	fmt.Println(receivedData)
+
+	//Determine type of command
+	// If it should be handled locally, use kv.go
+
+	// Else, find appropriate server for data using consistentHashing.go
+	//recipientIp := keyValueIP(selfName, members, key)
 }
 
 func compareMembers(inputKey string, inputValue Entry, storedValue Entry, storedMembersList map[string]Entry) {
@@ -181,4 +208,17 @@ func convertToEntryMap(genericData interface{}) map[string]Entry {
 	}
 
 	return members
+}
+
+func keyValueIP(selfName string, members map[string]Entry, key uint32) string {
+	machineName, _ := findSuccessor(selfName, members)
+	return strings.Split(machineName, "#")[1]
+}
+
+func convertToKVData(genericData interface{}) KVData {
+	command := genericData.(map[string]interface{})["Command"].(string)
+	key := genericData.(map[string]interface{})["Key"].(float64)
+	value := genericData.(map[string]interface{})["Value"]
+
+	return KVData{command, uint32(key), value}
 }
