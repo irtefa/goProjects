@@ -115,9 +115,9 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string, myKe
 			return
 		}
 
-		if FIRST_GOSSIP_RECIEVED == true {
-			requestKeys(selfName, members)
-		}
+		//if FIRST_GOSSIP_RECIEVED == true {
+		requestKeys(selfName, members)
+		//}
 
 		//update hbc
 		entry := members[selfName]
