@@ -9,13 +9,13 @@ import (
 )
 
 type Message struct {
-	DataType string      `json:"DataType"`
+	Datatype string      `json:"DataType"`
 	Data     interface{} `json:"Data"`
 }
 
-func createMessage(DataType string, Data interface{}) Message {
+func createMessage(Datatype string, Data interface{}) Message {
 	var retMessage Message
-	retMessage.DataType = DataType
+	retMessage.Datatype = Datatype
 	retMessage.Data = Data
 	return retMessage
 }
@@ -85,8 +85,9 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry) {
 		var receivedMembers map[string]Entry
 		//err = json.Unmarshal(buf[:rlen], &receivedMembers)
 		err = json.Unmarshal(buf[:rlen], &receivedMessage)
-		if receivedMessage.DataType == "gossip" {
-			receivedMembers = receivedMessage.Data.(map[string]Entry)
+
+		if receivedMessage.Datatype == "gossip" {
+			receivedMembers = convertToEntryMap(receivedMessage.Data)
 		}
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
@@ -160,4 +161,22 @@ func notifyContactPoint(members map[string]Entry, selfName string) {
 		fmt.Print(selfName + " joined the system ")
 		fmt.Println(time.Now())
 	}
+}
+
+func convertToEntryMap(genericData interface{}) map[string]Entry {
+	var members map[string]Entry
+	members = make(map[string]Entry)
+
+	for key, _ := range genericData.(map[string]interface{}) {
+		result := genericData.(map[string]interface{})[key]
+
+		newHbc := result.(map[string]interface{})["Hbc"].(float64)
+		newTimestamp := result.(map[string]interface{})["Timestamp"].(float64)
+		newFailure := result.(map[string]interface{})["Failure"].(bool)
+		newLeave := result.(map[string]interface{})["Leave"].(bool)
+
+		members[key] = Entry{int64(newHbc), int64(newTimestamp), newFailure, newLeave}
+	}
+
+	return members
 }
