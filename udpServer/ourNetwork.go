@@ -217,11 +217,8 @@ func leaderProtocolHandler(receivedData KVData, myMembers map[string]Entry) {
 
 // update the RM on receiving message from leader
 func updateRMProtocolHandler(receivedData map[string][]string, myMembers map[string]Entry) {
-	for key, _ := range receivedData {
-		for index, _ := range receivedData[key] {
-			ip_addr := receivedData[key][index]
-			RM.Insert(key, ip_addr)
-		}
+	for k, v := range receivedData {
+		RM.InsertSlice(k, v)
 	}
 }
 

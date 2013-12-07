@@ -210,6 +210,10 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 					}
 					fmt.Println()
 				}
+			case command == "RM":
+				{
+					RM.Show()
+				}
 			default:
 				{
 					fmt.Println("Incorrect command")
