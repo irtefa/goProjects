@@ -27,6 +27,8 @@ var (
 	RANDOM_NUMBERS        *rand.Rand = rand.New(rand.NewSource(time.Now().Unix()))
 	CONTACT_POINT                    = "192.17.11.40"
 	FIRST_GOSSIP_RECIEVED            = false
+	RM                               = rm.NewRm()
+	REPLICA_LEVEL                    = 3
 )
 
 func main() {
@@ -34,15 +36,6 @@ func main() {
 	ip_addr_curr_machine := os.Args[1]
 	myKeyValue := KeyValue{}
 	myKeyValue.data = make(map[string]interface{})
-
-	///TEST
-	repManager := rm.NewRm()
-	repManager.Insert("one", "two")
-	repManager.Insert("one", "three")
-	repManager.Insert("one", "four")
-	fmt.Println(repManager.Lookup("one", 2))
-	fmt.Println(repManager.SizeOfKey("one"))
-	///END_TEST
 
 	idleLoop()
 	sock, members, selfName := joinLogic(ip_addr_curr_machine, myKeyValue)
@@ -153,6 +146,7 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 
 		if len(commands) != 0 {
 			switch command := strings.ToUpper(commands[0]); {
+
 			case command == "LEAVE":
 				{
 					fmt.Print("LEAVE:Left the system ")

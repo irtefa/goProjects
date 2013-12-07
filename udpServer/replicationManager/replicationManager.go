@@ -21,10 +21,18 @@ func (_rm Rm) Lookup(key string, index int) string {
 	return (_rm.data[key])[index]
 }
 
+func (_rm Rm) GetAll(key string) []string {
+	return _rm.data[key]
+}
+
 func (_rm Rm) DeleteKey(key string) {
 	delete(_rm.data, key)
 }
 
 func (_rm Rm) SizeOfKey(key string) int {
 	return len(_rm.data[key])
+}
+
+func (_rm Rm) Exists(key string) bool {
+	return (_rm.data[key] != nil)
 }

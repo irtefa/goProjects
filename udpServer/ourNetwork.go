@@ -62,7 +62,7 @@ func sendHeartBeat(members map[string]Entry, selfName string) {
 }
 
 func sendKV(targetIp string, data KVData) {
-	m := createMessage("keyvalue", data)
+	m := createMessage("first", data)
 	b, err := json.Marshal(m)
 
 	recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
@@ -105,19 +105,122 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 			keyValueProtocolHandler(receivedMessageData, myMembers, selfName, myKeyValue)
 		} else if receivedMessage.Datatype == "string" {
 			fmt.Println(receivedMessage.Data.(string))
-			/*} else if receivedMessage.Datatype == "requestkv" {
-			originIp := receivedMessage.Data.(string)
-			if originIp != strings.Split(selfName, "#")[1] {
-				requestkvProtocolHandler(originIp, selfName, myKeyValue)
-			}
-			*/
 		} else if receivedMessage.Datatype == "batchkeys" {
 			batchkeysProtocolHandler(receivedMessage.Data, myKeyValue)
+		} else if receivedMessage.Datatype == "updateRM" {
+			receivedMessageData := convertToRM(receivedMessage.Data)
+			updateRMProtocolHandler(receivedMessageData, myMembers)
+		} else if receivedMessage.Datatype == "elected" {
+			receivedMessageData := convertToKVData(receivedMessage.Data)
+			leaderProtocolHandler(receivedMessageData, myMembers)
+		} else if receivedMessage.Datatype == "first" {
+			receivedMessageData := convertToKVData(receivedMessage.Data)
+			firstKeyValueCommandHandler(receivedMessageData, myMembers)
 		}
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
 			fmt.Print(err)
 			fmt.Println(time.Now())
+		}
+	}
+}
+
+func firstKeyValueCommandHandler(receivedData KVData, myMembers map[string]Entry) {
+	if RM.Exists(receivedData.Key) {
+		ips := RM.GetAll(receivedData.Key)
+		kvMsg := createMessage("keyvalue", receivedData)
+		b, _ := json.Marshal(kvMsg)
+		for key, _ := range ips {
+			targetIp := ips[key]
+			recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+			logError(err)
+			conn, err := net.DialUDP("udp", nil, recipientAddr)
+			if !logError(err) {
+				conn.Write(b)
+				conn.Close()
+			}
+		}
+	} else {
+		electionProtocolHandler(receivedData, myMembers)
+	}
+}
+
+// elect leader and send message
+func electionProtocolHandler(receivedData KVData, myMembers map[string]Entry) {
+	leaderSuffix := "1"
+	leader := ""
+
+	for key, _ := range myMembers {
+		ip := strings.Split(key, "#")[1]
+		suffix := strings.Split(ip, ".")[3]
+		if suffix > leaderSuffix {
+			leader = ip
+		}
+	}
+	// create message saying you are the leader
+	msg := createMessage("elected", receivedData)
+	b, _ := json.Marshal(msg)
+	// send msg to leader
+	recipientAddr, err := net.ResolveUDPAddr("udp", leader+":"+PORT)
+	logError(err)
+	conn, err := net.DialUDP("udp", nil, recipientAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
+	}
+
+}
+
+// you are elected as the leader
+func leaderProtocolHandler(receivedData KVData, myMembers map[string]Entry) {
+	if !RM.Exists(receivedData.Key) {
+		//pick REPLICA_LEVEL ips
+		ips := pickAdresses(myMembers, REPLICA_LEVEL, "does not matter")
+		//leader creates mapping
+		for key, _ := range ips {
+			ip := strings.Split(ips[key], "#")[1]
+			RM.Insert(receivedData.Key, ip)
+		}
+	}
+	//leader updates everyone with mapping
+	sendData := make(map[string][]string)
+	sendData[receivedData.Key] = RM.GetAll(receivedData.Key)
+	mappingMsg := createMessage("updateRM", sendData)
+	b, _ := json.Marshal(mappingMsg)
+	for key, _ := range myMembers {
+		targetIp := strings.Split(key, "#")[1]
+		recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+		logError(err)
+		conn, err := net.DialUDP("udp", nil, recipientAddr)
+		if !logError(err) {
+			conn.Write(b)
+			conn.Close()
+		}
+	}
+	//send kv messages
+	ips := RM.GetAll(receivedData.Key)
+	kvMsg := createMessage("keyvalue", receivedData)
+	b, _ = json.Marshal(kvMsg)
+
+	for key, _ := range ips {
+
+		targetIp := ips[key]
+		recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+		logError(err)
+		conn, err := net.DialUDP("udp", nil, recipientAddr)
+		if !logError(err) {
+			conn.Write(b)
+			conn.Close()
+		}
+	}
+}
+
+// update the RM on receiving message from leader
+func updateRMProtocolHandler(receivedData map[string][]string, myMembers map[string]Entry) {
+	for key, _ := range receivedData {
+		for index, _ := range receivedData[key] {
+			ip_addr := receivedData[key][index]
+			RM.Insert(key, ip_addr)
 		}
 	}
 }
@@ -264,4 +367,16 @@ func convertToKVData(genericData interface{}) KVData {
 	value := genericData.(map[string]interface{})["Value"]
 
 	return KVData{command, origin, key, value}
+}
+
+func convertToRM(genericData interface{}) map[string][]string {
+	halfRM := genericData.(map[string]interface{})
+	retRM := make(map[string][]string)
+	for key, _ := range halfRM {
+		arr := halfRM[key].([]interface{})
+		for index, _ := range arr {
+			retRM[key] = append(retRM[key], arr[index].(string))
+		}
+	}
+	return retRM
 }
