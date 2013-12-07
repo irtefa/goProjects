@@ -3,33 +3,29 @@ package main
 type KVData struct {
 	Command string      `json:"Command"`
 	Origin  string      `json:"Origin"`
-	Key     uint32      `json:"Key"`
+	Key     string      `json:"Key"`
 	Value   interface{} `json:"Value"`
 }
 
 type KeyValue struct {
-	data map[uint32]interface{}
+	data map[string]interface{}
 }
 
 func (kv KeyValue) Insert(key string, value interface{}) {
-	intKey := createHash(key)
-	kv.data[intKey] = value
+	kv.data[key] = value
 }
 
 func (kv KeyValue) Lookup(key string) interface{} {
-	intKey := createHash(key)
-	if kv.data[intKey] == nil {
+	if kv.data[key] == nil {
 		return "Key not found"
 	}
-	return kv.data[intKey]
+	return kv.data[key]
 }
 
 func (kv KeyValue) Update(key string, newValue interface{}) {
-	intKey := createHash(key)
-	kv.data[intKey] = newValue
+	kv.data[key] = newValue
 }
 
 func (kv KeyValue) Delete(key string) {
-	intKey := createHash(key)
-	delete(kv.data, intKey)
+	delete(kv.data, key)
 }

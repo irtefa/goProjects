@@ -11,7 +11,6 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -34,7 +33,7 @@ func main() {
 	CONTACT_POINT = os.Args[2]
 	ip_addr_curr_machine := os.Args[1]
 	myKeyValue := KeyValue{}
-	myKeyValue.data = make(map[uint32]interface{})
+	myKeyValue.data = make(map[string]interface{})
 
 	idleLoop()
 	sock, members, selfName := joinLogic(ip_addr_curr_machine, myKeyValue)
@@ -62,43 +61,6 @@ func joinLogic(ip_addr_curr_machine string, myKeyValue KeyValue) (*net.UDPConn, 
 }
 
 func leaveLogic(selfName string, myKeyValue KeyValue, members map[string]Entry) {
-	selfIp := strings.Split(selfName, "#")[1]
-	hashedSelfIp := createHash(selfIp)
-	successorName, _ := findSuccessor(hashedSelfIp, selfName, members)
-	successorIp := strings.Split(successorName, "#")[1]
-
-	var SendKeyValue map[string]interface{}
-	SendKeyValue = make(map[string]interface{})
-
-	var deleteKeyValue map[uint32]interface{}
-	deleteKeyValue = make(map[uint32]interface{})
-
-	for key, _ := range myKeyValue.data {
-		SendKeyValue[strconv.Itoa(int(key))] = myKeyValue.data[key]
-		deleteKeyValue[key] = myKeyValue.data[key]
-	}
-
-	//delete the keys that were added to sendKeyValue
-
-	for key, _ := range deleteKeyValue {
-		fmt.Print("KEYVALUE: Transferred ")
-		fmt.Print(key)
-		fmt.Println(" to " + successorIp)
-		delete(myKeyValue.data, key)
-	}
-
-	//send sendKeyValue over the network
-	m := createMessage("batchkeys", SendKeyValue)
-
-	b, err := json.Marshal(m)
-
-	recipientAddr, err := net.ResolveUDPAddr("udp", successorIp+":"+PORT)
-	logError(err)
-	conn, err := net.DialUDP("udp", nil, recipientAddr)
-	if !logError(err) {
-		conn.Write(b)
-		conn.Close()
-	}
 }
 
 func requestKeys(selfName string, members map[string]Entry) {
@@ -157,7 +119,7 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string, myKe
 		}
 
 		//if FIRST_GOSSIP_RECIEVED == true {
-		requestKeys(selfName, members)
+		//requestKeys(selfName, members)
 		//}
 
 		//update hbc
@@ -192,35 +154,35 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 				}
 			case command == "INSERT":
 				{
-					key, _ := strconv.Atoi(commands[1])
+					key := commands[1]
 					value := commands[2]
 					targetIp := strings.Split(selfName, "#")[1]
 
-					kvdata := KVData{"insert", targetIp, uint32(key), value}
+					kvdata := KVData{"insert", targetIp, key, value}
 					sendKV(targetIp, kvdata)
 				}
 			case command == "LOOKUP":
 				{
-					key, _ := strconv.Atoi(commands[1])
+					key := commands[1]
 					targetIp := strings.Split(selfName, "#")[1]
 
-					kvdata := KVData{"lookup", targetIp, uint32(key), 0}
+					kvdata := KVData{"lookup", targetIp, key, 0}
 					sendKV(targetIp, kvdata)
 				}
 			case command == "DELETE":
 				{
-					key, _ := strconv.Atoi(commands[1])
+					key := commands[1]
 					targetIp := strings.Split(selfName, "#")[1]
 
-					kvdata := KVData{"delete", targetIp, uint32(key), 0}
+					kvdata := KVData{"delete", targetIp, key, 0}
 					sendKV(targetIp, kvdata)
 				}
 			case command == "UPDATE":
 				{
-					key, _ := strconv.Atoi(commands[1])
+					key := commands[1]
 					targetIp := strings.Split(selfName, "#")[1]
 
-					kvdata := KVData{"update", targetIp, uint32(key), commands[2]}
+					kvdata := KVData{"update", targetIp, key, commands[2]}
 					sendKV(targetIp, kvdata)
 				}
 			case command == "SHOW":
@@ -229,7 +191,7 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 					fmt.Println("Showing all key|values")
 					fmt.Println("======================")
 					for hashedKey, _ := range myKeyValue.data {
-						fmt.Print("Hashed key: ")
+						fmt.Print("key: ")
 						fmt.Print(hashedKey)
 						fmt.Print(" | value: ")
 						fmt.Print(myKeyValue.data[hashedKey])
