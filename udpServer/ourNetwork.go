@@ -161,40 +161,29 @@ func gossipProtocolHandler(receivedMembers map[string]Entry, myMembers map[strin
 }
 
 func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, selfName string, myKeyValue KeyValue) {
-	key := createHash(string(receivedData.Key))
-	selfIp := strings.Split(selfName, "#")[1]
-	// If it should be handled locally, use kv.go
-	targetName, _ := findSuccessor(key, selfName, myMembers)
-	targetIp := strings.Split(targetName, "#")[1]
-
-	if targetIp == selfIp {
-		if receivedData.Command == "insert" {
-			myKeyValue.Insert(string(receivedData.Key), receivedData.Value)
-			fmt.Print("INSERT: ")
-			fmt.Print(receivedData.Key)
-			fmt.Println(" was inserted from " + receivedData.Origin)
-		} else if receivedData.Command == "lookup" {
-			message := myKeyValue.Lookup(string(receivedData.Key))
-			sendMessageToOrigin(receivedData.Origin, message)
-			fmt.Print("LOOKUP: ")
-			fmt.Print(receivedData.Key)
-			fmt.Println(" was looked up from " + receivedData.Origin)
-		} else if receivedData.Command == "update" {
-			myKeyValue.Update(string(receivedData.Key), receivedData.Value)
-			fmt.Print("UPDATE: ")
-			fmt.Print(receivedData.Key)
-			fmt.Println(" was updated from " + receivedData.Origin)
-		} else if receivedData.Command == "delete" {
-			fmt.Println("deleting")
-			myKeyValue.Delete(string(receivedData.Key))
-			fmt.Print("DELETE: ")
-			fmt.Print(receivedData.Key)
-			fmt.Println(" was deleted from " + receivedData.Origin)
-		}
-	} else {
-		sendKV(targetIp, receivedData)
+	if receivedData.Command == "insert" {
+		myKeyValue.Insert(string(receivedData.Key), receivedData.Value)
+		fmt.Print("INSERT: ")
+		fmt.Print(receivedData.Key)
+		fmt.Println(" was inserted from " + receivedData.Origin)
+	} else if receivedData.Command == "lookup" {
+		message := myKeyValue.Lookup(string(receivedData.Key))
+		sendMessageToOrigin(receivedData.Origin, message)
+		fmt.Print("LOOKUP: ")
+		fmt.Print(receivedData.Key)
+		fmt.Println(" was looked up from " + receivedData.Origin)
+	} else if receivedData.Command == "update" {
+		myKeyValue.Update(string(receivedData.Key), receivedData.Value)
+		fmt.Print("UPDATE: ")
+		fmt.Print(receivedData.Key)
+		fmt.Println(" was updated from " + receivedData.Origin)
+	} else if receivedData.Command == "delete" {
+		fmt.Println("deleting")
+		myKeyValue.Delete(string(receivedData.Key))
+		fmt.Print("DELETE: ")
+		fmt.Print(receivedData.Key)
+		fmt.Println(" was deleted from " + receivedData.Origin)
 	}
-
 }
 
 func sendMessageToOrigin(targetIp string, message interface{}) {

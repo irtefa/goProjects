@@ -6,7 +6,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
@@ -63,7 +62,7 @@ func joinLogic(ip_addr_curr_machine string, myKeyValue KeyValue) (*net.UDPConn, 
 func leaveLogic(selfName string, myKeyValue KeyValue, members map[string]Entry) {
 }
 
-func requestKeys(selfName string, members map[string]Entry) {
+/*func requestKeys(selfName string, members map[string]Entry) {
 	selfIp := strings.Split(selfName, "#")[1]
 	hashedSelfIp := createHash(selfIp)
 	successorName, _ := findSuccessor(hashedSelfIp, selfName, members)
@@ -79,7 +78,7 @@ func requestKeys(selfName string, members map[string]Entry) {
 		conn.Write(b)
 		conn.Close()
 	}
-}
+}*/
 
 /*
  * Log error if any
