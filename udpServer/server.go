@@ -5,6 +5,7 @@
 package main
 
 import (
+	"./replicationManager"
 	"bufio"
 	"fmt"
 	"math/rand"
@@ -33,6 +34,15 @@ func main() {
 	ip_addr_curr_machine := os.Args[1]
 	myKeyValue := KeyValue{}
 	myKeyValue.data = make(map[string]interface{})
+
+	///TEST
+	repManager := rm.NewRm()
+	repManager.Insert("one", "two")
+	repManager.Insert("one", "three")
+	repManager.Insert("one", "four")
+	fmt.Println(repManager.Lookup("one", 2))
+	fmt.Println(repManager.SizeOfKey("one"))
+	///END_TEST
 
 	idleLoop()
 	sock, members, selfName := joinLogic(ip_addr_curr_machine, myKeyValue)
