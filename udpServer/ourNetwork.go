@@ -169,7 +169,7 @@ func requestValueHandler(receivedMessage string, myKeyValue KeyValue) {
 	}
 }
 
-func fillSparseEntryHandler(receivedValue string, myMembers map[string]Entry) {
+func fillSparseEntryHandler(recipient_IP string, myMembers map[string]Entry) {
 
 	//update RM that has sparse entries
 	allRms := RM.GetEntireRmData()
@@ -177,7 +177,7 @@ func fillSparseEntryHandler(receivedValue string, myMembers map[string]Entry) {
 	for key, value := range allRms {
 		if len(value) < REPLICA_LEVEL {
 			//send request here with ip address and key
-			kvMsg := createMessage("askforvalue", SELF_IP+"#"+key)
+			kvMsg := createMessage("askforvalue", recipient_IP+"#"+key)
 			b, _ := json.Marshal(kvMsg)
 			targetIp := RM.Lookup(key, 0)
 			recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
@@ -188,6 +188,8 @@ func fillSparseEntryHandler(receivedValue string, myMembers map[string]Entry) {
 				conn.Close()
 			}
 
+			// Update RM
+			RM.Insert(key, recipient_IP)
 		}
 	}
 	//broadcast rm
