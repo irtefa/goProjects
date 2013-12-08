@@ -5,12 +5,12 @@ type KVData struct {
 	Origin  string      `json:"Origin"`
 	Key     string      `json:"Key"`
 	Value   interface{} `json:"Value"`
-	Version int         `json:"Version"`
+	Version float64     `json:"Version"`
 }
 
 type KeyValue struct {
 	data    map[string]interface{}
-	version map[string]int
+	version map[string]float64
 }
 
 func (kv KeyValue) Insert(key string, value interface{}) {
@@ -35,6 +35,6 @@ func (kv KeyValue) Delete(key string) {
 	delete(kv.data, key)
 }
 
-func (kv KeyValue) GetVersion(key string) int {
+func (kv KeyValue) GetVersion(key string) float64 {
 	return kv.version[key]
 }

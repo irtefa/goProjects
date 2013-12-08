@@ -669,7 +669,7 @@ func convertToKVData(genericData interface{}) KVData {
 	origin := genericData.(map[string]interface{})["Origin"].(string)
 	key := genericData.(map[string]interface{})["Key"].(string)
 	value := genericData.(map[string]interface{})["Value"]
-	version := genericData.(map[string]interface{})["Version"].(int)
+	version := genericData.(map[string]interface{})["Version"].(float64)
 
 	return KVData{command, origin, key, value, version}
 }

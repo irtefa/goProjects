@@ -37,6 +37,7 @@ func main() {
 	SELF_IP = os.Args[1]
 	myKeyValue := KeyValue{}
 	myKeyValue.data = make(map[string]interface{})
+	myKeyValue.version = make(map[string]float64)
 
 	idleLoop()
 	sock, members, selfName := joinLogic(SELF_IP, myKeyValue)
