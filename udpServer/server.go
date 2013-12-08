@@ -23,12 +23,12 @@ const (
 )
 
 var (
-	QUIT                  bool       = false
-	RANDOM_NUMBERS        *rand.Rand = rand.New(rand.NewSource(time.Now().Unix()))
-	CONTACT_POINT                    = "192.17.11.40"
-	FIRST_GOSSIP_RECIEVED            = false
-	RM                               = rm.NewRm()
-	REPLICA_LEVEL                    = 3
+	QUIT           bool       = false
+	RANDOM_NUMBERS *rand.Rand = rand.New(rand.NewSource(time.Now().Unix()))
+	CONTACT_POINT             = "192.17.11.40"
+	RM                        = rm.NewRm()
+	REPLICA_LEVEL             = 3
+	RM_LEADER                 = "empty"
 )
 
 func main() {
@@ -51,13 +51,14 @@ func main() {
 func joinLogic(ip_addr_curr_machine string, myKeyValue KeyValue) (*net.UDPConn, map[string]Entry, string) {
 	sock := netSetup()
 
-	FIRST_GOSSIP_RECIEVED = false
 	QUIT = false
 
 	membershipInfo := initializeMembers(ip_addr_curr_machine)
 	members := membershipInfo.List
 	selfName := membershipInfo.Id
-	notifyContactPoint(members, selfName)
+	firstAskContact(members, selfName, sock)
+	//notifyContactPoint(members, selfName)
+	//leaderAskHandler(CONTACT_POINT, strings.Split(selfName, "#")[1])
 
 	return sock, members, selfName
 }
@@ -119,10 +120,6 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string, myKe
 			sendHeartBeat(members, selfName)
 			return
 		}
-
-		//if FIRST_GOSSIP_RECIEVED == true {
-		//requestKeys(selfName, members)
-		//}
 
 		//update hbc
 		entry := members[selfName]

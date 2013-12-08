@@ -99,7 +99,6 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 		if receivedMessage.Datatype == "gossip" {
 			receivedMessageData := convertToEntryMap(receivedMessage.Data)
 			gossipProtocolHandler(receivedMessageData, myMembers)
-			FIRST_GOSSIP_RECIEVED = true
 		} else if receivedMessage.Datatype == "keyvalue" {
 			receivedMessageData := convertToKVData(receivedMessage.Data)
 			keyValueProtocolHandler(receivedMessageData, myMembers, selfName, myKeyValue)
@@ -116,12 +115,45 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 		} else if receivedMessage.Datatype == "first" {
 			receivedMessageData := convertToKVData(receivedMessage.Data)
 			firstKeyValueCommandHandler(receivedMessageData, myMembers)
+		} else if receivedMessage.Datatype == "leader-ask" {
+			requesting_ip := receivedMessage.Data.(string)
+			leaderTellHandler(requesting_ip)
+		} else if receivedMessage.Datatype == "leader-tell" {
+			RM_LEADER = receivedMessage.Data.(string)
 		}
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
 			fmt.Print(err)
 			fmt.Println(time.Now())
 		}
+	}
+}
+
+func leaderAskHandler(contact_ip string, self_ip string) {
+	msg := createMessage("leader-ask", self_ip)
+	b, _ := json.Marshal(msg)
+
+	// send msg to leader
+	recipientAddr, err := net.ResolveUDPAddr("udp", contact_ip+":"+PORT)
+	logError(err)
+	conn, err := net.DialUDP("udp", nil, recipientAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
+	}
+}
+
+func leaderTellHandler(requestor_ip string) {
+	msg := createMessage("leader-tell", RM_LEADER)
+	b, _ := json.Marshal(msg)
+
+	// send msg to leader
+	recipientAddr, err := net.ResolveUDPAddr("udp", requestor_ip+":"+PORT)
+	logError(err)
+	conn, err := net.DialUDP("udp", nil, recipientAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
 	}
 }
 
@@ -141,7 +173,21 @@ func firstKeyValueCommandHandler(receivedData KVData, myMembers map[string]Entry
 			}
 		}
 	} else {
-		electionProtocolHandler(receivedData, myMembers)
+		if RM_LEADER != "empty" {
+			msg := createMessage("elected", receivedData)
+			b, _ := json.Marshal(msg)
+
+			// send msg to leader
+			recipientAddr, err := net.ResolveUDPAddr("udp", RM_LEADER+":"+PORT)
+			logError(err)
+			conn, err := net.DialUDP("udp", nil, recipientAddr)
+			if !logError(err) {
+				conn.Write(b)
+				conn.Close()
+			}
+		} else {
+			electionProtocolHandler(receivedData, myMembers)
+		}
 	}
 }
 
@@ -157,9 +203,13 @@ func electionProtocolHandler(receivedData KVData, myMembers map[string]Entry) {
 			leader = ip
 		}
 	}
-	// create message saying you are the leader
+
+	RM_LEADER = leader
+
+	// create message to send to new leader
 	msg := createMessage("elected", receivedData)
 	b, _ := json.Marshal(msg)
+
 	// send msg to leader
 	recipientAddr, err := net.ResolveUDPAddr("udp", leader+":"+PORT)
 	logError(err)
@@ -168,11 +218,11 @@ func electionProtocolHandler(receivedData KVData, myMembers map[string]Entry) {
 		conn.Write(b)
 		conn.Close()
 	}
-
 }
 
 // you are elected as the leader
 func leaderProtocolHandler(receivedData KVData, myMembers map[string]Entry) {
+
 	if !RM.Exists(receivedData.Key) {
 		//pick REPLICA_LEVEL ips
 		ips := pickAdresses(myMembers, REPLICA_LEVEL, "does not matter")
@@ -337,6 +387,39 @@ func notifyContactPoint(members map[string]Entry, selfName string) {
 		fmt.Print(selfName + " joined the system ")
 		fmt.Println(time.Now())
 	}
+}
+
+func firstAskContact(members map[string]Entry, selfName string, sock *net.UDPConn) {
+	m := createMessage("gossip", members)
+	b, err := json.Marshal(m)
+	//send to contact point
+	memberAddr, err := net.ResolveUDPAddr("udp", CONTACT_POINT+":"+PORT)
+	logError(err)
+	//
+	conn, err := net.DialUDP("udp", nil, memberAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
+		//log join
+		fmt.Print("JOIN:")
+		fmt.Print(selfName + " joined the system ")
+		fmt.Println(time.Now())
+	}
+
+	// Wait for contact point to respond
+	buf := make([]byte, RECV_BUF_LEN)
+	rlen, _, err := sock.ReadFromUDP(buf)
+	if QUIT == true {
+		return
+	}
+	logError(err)
+
+	//Respond received
+	var receivedMessage Message
+	err = json.Unmarshal(buf[:rlen], &receivedMessage)
+
+	receivedMembers := convertToEntryMap(receivedMessage.Data)
+	gossipProtocolHandler(receivedMembers, members)
 }
 
 func convertToEntryMap(genericData interface{}) map[string]Entry {
