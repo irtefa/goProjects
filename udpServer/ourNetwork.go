@@ -134,11 +134,28 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 	}
 }
 
+/*
+func recvKeyValueHandler(kvData KVData) {
+
+	RM.Insert(key, receivedValue)
+	buf := make([]byte, RECV_BUF_LEN)
+
+	rlen, _, err := sock.ReadFromUDP(buf)
+	logError(err)
+
+	//Second, setting up member information from retrieved value
+	var receivedMessage Message
+	err = json.Unmarshal(buf[:rlen], &receivedMessage)
+	if receivedMessage.Datatype == "recvkeyvalue" {
+		kv[key] = receivedMessage.Data.(string)
+	}
+}*/
+
 func requestValueHandler(receivedMessage string, myKeyValue KeyValue) {
 	targetIp := strings.Split(receivedMessage, "#")[0]
 	key := strings.Split(receivedMessage, "#")[1]
-
-	value := createMessage("recvkeyvalue", myKeyValue.Lookup(key))
+	kvData := KVData{"insert", SELF_IP, key, myKeyValue.Lookup(key)}
+	value := createMessage("keyvalue", kvData)
 	b, _ := json.Marshal(value)
 
 	recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
@@ -154,11 +171,10 @@ func fillSparseEntryHandler(receivedValue string, myMembers map[string]Entry) {
 
 	//update RM that has sparse entries
 	allRms := RM.GetEntireRmData()
-	kv := make(map[string]string)
+
 	for key, value := range allRms {
 		if len(value) < REPLICA_LEVEL {
 			//send request here with ip address and key
-			sock := netSetup()
 			kvMsg := createMessage("askforvalue", SELF_IP+"#"+key)
 			b, _ := json.Marshal(kvMsg)
 			targetIp := RM.Lookup(key, 0)
@@ -170,18 +186,6 @@ func fillSparseEntryHandler(receivedValue string, myMembers map[string]Entry) {
 				conn.Close()
 			}
 
-			RM.Insert(key, receivedValue)
-			buf := make([]byte, RECV_BUF_LEN)
-
-			rlen, _, err := sock.ReadFromUDP(buf)
-			logError(err)
-
-			//Second, setting up member information from retrieved value
-			var receivedMessage Message
-			err = json.Unmarshal(buf[:rlen], &receivedMessage)
-			if receivedMessage.Datatype == "recvkeyvalue" {
-				kv[key] = receivedMessage.Data.(string)
-			}
 		}
 	}
 	//broadcast rm
@@ -195,32 +199,6 @@ func fillSparseEntryHandler(receivedValue string, myMembers map[string]Entry) {
 		if !logError(err) {
 			conn.Write(b)
 			conn.Close()
-		}
-	}
-	//send kv messages
-	for key, _ := range kv {
-		ips := RM.GetAll(kv[key])
-		//create KVData message
-		type KVData struct {
-			Command string      `json:"Command"`
-			Origin  string      `json:"Origin"`
-			Key     string      `json:"Key"`
-			Value   interface{} `json:"Value"`
-		}
-		kvData := KVData{"insert", SELF_IP, key, kv[key]}
-		kvMsg := createMessage("keyvalue", kvData)
-		b, _ = json.Marshal(kvMsg)
-
-		for key, _ := range ips {
-
-			targetIp := ips[key]
-			recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
-			logError(err)
-			conn, err := net.DialUDP("udp", nil, recipientAddr)
-			if !logError(err) {
-				conn.Write(b)
-				conn.Close()
-			}
 		}
 	}
 }
