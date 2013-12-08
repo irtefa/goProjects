@@ -175,6 +175,19 @@ func crashHandler(crashed_ip string, myMembers map[string]Entry) {
 				}
 			} else {
 				fmt.Println("WARNING: No replacement RMs found")
+				//broadcast rm
+				broadcastRM := createMessage("updateRM", RM.GetEntireRmData())
+				b, _ := json.Marshal(broadcastRM)
+				for key, _ := range myMembers {
+					targetIp := strings.Split(key, "#")[1]
+					recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+					logError(err)
+					conn, err := net.DialUDP("udp", nil, recipientAddr)
+					if !logError(err) {
+						conn.Write(b)
+						conn.Close()
+					}
+				}
 			}
 		}
 	}
@@ -424,7 +437,6 @@ func leaderProtocolHandler(receivedData KVData, myMembers map[string]Entry) {
 
 // update the RM on receiving message from leader
 func updateRMProtocolHandler(receivedData map[string][]string, myMembers map[string]Entry) {
-
 	for k, v := range receivedData {
 		RM.Replace(k, v)
 	}
