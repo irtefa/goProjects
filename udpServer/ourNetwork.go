@@ -129,6 +129,22 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 	}
 }
 
+func rmRequestHandler(requestor_ip string) {
+	sendData := make(map[string][]string)
+	sendData = RM.GetEntireRmData()
+
+	mappingMsg := createMessage("updateRM", sendData)
+	b, _ := json.Marshal(mappingMsg)
+
+	recipientAddr, err := net.ResolveUDPAddr("udp", requestor_ip+":"+PORT)
+	logError(err)
+	conn, err := net.DialUDP("udp", nil, recipientAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
+	}
+}
+
 func leaderAskHandler(contact_ip string, self_ip string) {
 	msg := createMessage("leader-ask", self_ip)
 	b, _ := json.Marshal(msg)
@@ -420,6 +436,10 @@ func firstAskContact(members map[string]Entry, selfName string, sock *net.UDPCon
 
 	receivedMembers := convertToEntryMap(receivedMessage.Data)
 	gossipProtocolHandler(receivedMembers, members)
+
+	// Update leader pointer
+	leaderAskHandler(CONTACT_POINT, strings.Split(selfName, "#")[1])
+	// Get contact point's rm
 }
 
 func convertToEntryMap(genericData interface{}) map[string]Entry {

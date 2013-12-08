@@ -53,3 +53,7 @@ func (_rm Rm) Show() {
 		fmt.Println("")
 	}
 }
+
+func (_rm Rm) GetEntireRmData() map[string][]string {
+	return _rm.data
+}
