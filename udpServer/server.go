@@ -5,6 +5,7 @@
 package main
 
 import (
+	"./keyValueManager"
 	"./replicationManager"
 	"bufio"
 	"fmt"
@@ -23,34 +24,33 @@ const (
 )
 
 var (
-	QUIT           bool       = false
-	RANDOM_NUMBERS *rand.Rand = rand.New(rand.NewSource(time.Now().Unix()))
-	CONTACT_POINT             = "192.17.11.40"
-	RM                        = rm.NewRm()
-	REPLICA_LEVEL             = 3
-	RM_LEADER                 = "empty"
-	SELF_IP                   = "empty"
+	QUIT               bool       = false
+	RANDOM_NUMBERS     *rand.Rand = rand.New(rand.NewSource(time.Now().Unix()))
+	CONTACT_POINT                 = "192.17.11.40"
+	RM                            = rm.NewRm()
+	MY_KEY_VALUE                  = kv.NewKeyValue()
+	REPLICA_LEVEL                 = 3
+	RM_LEADER                     = "empty"
+	SELF_IP                       = "empty"
+	CONNECTED_MACHINES            = 0
 )
 
 func main() {
 	CONTACT_POINT = os.Args[2]
 	SELF_IP = os.Args[1]
-	myKeyValue := KeyValue{}
-	myKeyValue.data = make(map[string]interface{})
-	myKeyValue.version = make(map[string]float64)
 
 	idleLoop()
-	sock, members, selfName := joinLogic(SELF_IP, myKeyValue)
+	sock, members, selfName := joinLogic(SELF_IP)
 
 	for {
-		gameLoop(sock, members, selfName, myKeyValue)
-		leaveLogic(selfName, myKeyValue, members)
+		gameLoop(sock, members, selfName)
+		leaveLogic(selfName, members)
 		idleLoop()
-		sock, members, selfName = joinLogic(SELF_IP, myKeyValue)
+		sock, members, selfName = joinLogic(SELF_IP)
 	}
 }
 
-func joinLogic(ip_addr_curr_machine string, myKeyValue KeyValue) (*net.UDPConn, map[string]Entry, string) {
+func joinLogic(ip_addr_curr_machine string) (*net.UDPConn, map[string]Entry, string) {
 	sock := netSetup()
 
 	QUIT = false
@@ -60,33 +60,13 @@ func joinLogic(ip_addr_curr_machine string, myKeyValue KeyValue) (*net.UDPConn, 
 	selfName := membershipInfo.Id
 
 	firstAskContact(members, selfName, sock)
-
-	//notifyContactPoint(members, selfName)
-	//leaderAskHandler(CONTACT_POINT, strings.Split(selfName, "#")[1])
+	CONNECTED_MACHINES += 1
 
 	return sock, members, selfName
 }
 
-func leaveLogic(selfName string, myKeyValue KeyValue, members map[string]Entry) {
+func leaveLogic(selfName string, members map[string]Entry) {
 }
-
-/*func requestKeys(selfName string, members map[string]Entry) {
-	selfIp := strings.Split(selfName, "#")[1]
-	hashedSelfIp := createHash(selfIp)
-	successorName, _ := findSuccessor(hashedSelfIp, selfName, members)
-	targetIp := strings.Split(successorName, "#")[1]
-
-	m := createMessage("requestkv", selfIp)
-	b, err := json.Marshal(m)
-
-	recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
-	logError(err)
-	conn, err := net.DialUDP("udp", nil, recipientAddr)
-	if !logError(err) {
-		conn.Write(b)
-		conn.Close()
-	}
-}*/
 
 /*
  * Log error if any
@@ -108,11 +88,11 @@ func logError(err error) bool {
 3) Update membership list
 4) Send heartbeats to k random members in list
 */
-func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string, myKeyValue KeyValue) {
+func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 	var c chan KVData = make(chan KVData)
 
-	go recvHeartBeat(sock, members, selfName, myKeyValue, c)
-	go checkForExit(sock, members, selfName, myKeyValue, c)
+	go recvHeartBeat(sock, members, selfName, c)
+	go checkForExit(sock, members, selfName, c)
 	var waitDuration int64 = 100
 
 	for {
@@ -142,7 +122,7 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string, myKe
 	}
 }
 
-func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, myKeyValue KeyValue, c chan KVData) {
+func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, c chan KVData) {
 	for {
 		userInput := handleCmdInput()
 		commands := strings.Fields(userInput) //splits the input into an array
@@ -208,16 +188,9 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 				}
 			case command == "SHOW":
 				{
-					fmt.Println()
-					fmt.Println("Showing all key|values")
-					fmt.Println("======================")
-					for hashedKey, _ := range myKeyValue.data {
-						fmt.Print("key: ")
-						fmt.Print(hashedKey)
-						fmt.Print(" | value: ")
-						fmt.Print(myKeyValue.data[hashedKey])
-						fmt.Println("")
-					}
+					MY_KEY_VALUE.ReadRecentRead()
+					MY_KEY_VALUE.ReadRecentWrite()
+
 					fmt.Println()
 					fmt.Println("****")
 					fmt.Println()
@@ -249,12 +222,19 @@ func findLevelAmt(level string) int {
 	if strings.ToUpper(level) == "ONE" {
 		return 1
 	} else if strings.ToUpper(level) == "QUORUM" {
+		if REPLICA_LEVEL/2+1 > CONNECTED_MACHINES {
+			return CONNECTED_MACHINES
+		}
 		return REPLICA_LEVEL/2 + 1
 	} else if strings.ToUpper(level) == "ALL" {
+		if REPLICA_LEVEL > CONNECTED_MACHINES {
+			return CONNECTED_MACHINES
+		}
 		return REPLICA_LEVEL
 	} else {
 		return 1
 	}
+
 }
 
 func waitForLevelAmt(level int, c chan KVData) KVData {
@@ -271,27 +251,33 @@ func waitForLevelAmt(level int, c chan KVData) KVData {
 		counter = counter + 1
 
 		if counter == level {
-			fmt.Println("*************")
-			fmt.Print("Received responses from: ")
-			fmt.Print(counter)
-			fmt.Println(" RMs")
 			break
 		}
 	}
 
+	fmt.Println("*************")
+	fmt.Print("Received responses from: ")
+	fmt.Print(counter)
+	fmt.Println(" RMs")
+
 	return finalResult
 }
 
-func filterOutOthers(remainder int, c chan KVData) {
+func filterOutOthers(amount_found int, c chan KVData) {
 	counter := 0
+	remainder := REPLICA_LEVEL - amount_found
+
+	if CONNECTED_MACHINES-amount_found < remainder {
+		remainder = CONNECTED_MACHINES - amount_found
+	}
 
 	for {
-		_ = <-c
-		counter += 1
-
-		if counter == remainder {
+		if counter >= remainder {
 			return
 		}
+
+		_ = <-c
+		counter += 1
 	}
 }
 
@@ -308,6 +294,7 @@ func checkFailure(members map[string]Entry) {
 			} else if !entry.Failure {
 				entry.Failure = true
 				members[member] = entry
+				CONNECTED_MACHINES -= 1
 				//log mark failure
 				fmt.Print("FAILURE:")
 				fmt.Print(member + " is marked as failure ")

@@ -13,6 +13,14 @@ type Message struct {
 	Data     interface{} `json:"Data"`
 }
 
+type KVData struct {
+	Command string      `json:"Command"`
+	Origin  string      `json:"Origin"`
+	Key     string      `json:"Key"`
+	Value   interface{} `json:"Value"`
+	Version float64     `json:"Version"`
+}
+
 func createMessage(Datatype string, Data interface{}) Message {
 	var retMessage Message
 	retMessage.Datatype = Datatype
@@ -81,7 +89,7 @@ func sendKV(targetIp string, data KVData) {
  * @param remote address of the machine that sent the heartBeat
  * @param buf the byte array containing the messages
  */
-func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName string, myKeyValue KeyValue, c chan KVData) {
+func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName string, c chan KVData) {
 	for {
 		//we should change the byte length in the future
 		//First initialize connection
@@ -101,14 +109,15 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 			gossipProtocolHandler(receivedMessageData, myMembers)
 		} else if receivedMessage.Datatype == "keyvalue" {
 			receivedMessageData := convertToKVData(receivedMessage.Data)
-			keyValueProtocolHandler(receivedMessageData, myMembers, selfName, myKeyValue)
+			keyValueProtocolHandler(receivedMessageData, myMembers, selfName)
 		} else if receivedMessage.Datatype == "kvresp" {
+			//This handler is mainly just for testing client-stuff
 			receivedMessageData := convertToKVData(receivedMessage.Data)
 			c <- receivedMessageData
 		} else if receivedMessage.Datatype == "string" {
 			fmt.Println(receivedMessage.Data.(string))
 		} else if receivedMessage.Datatype == "batchkeys" {
-			batchkeysProtocolHandler(receivedMessage.Data, myKeyValue)
+			batchkeysProtocolHandler(receivedMessage.Data)
 		} else if receivedMessage.Datatype == "updateRM" {
 			receivedMessageData := convertToRM(receivedMessage.Data)
 			updateRMProtocolHandler(receivedMessageData, myMembers)
@@ -127,7 +136,7 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 			requesting_ip := receivedMessage.Data.(string)
 			rmRequestHandler(requesting_ip)
 		} else if receivedMessage.Datatype == "askforvalue" {
-			requestValueHandler(receivedMessage.Data.(string), myKeyValue)
+			requestValueHandler(receivedMessage.Data.(string))
 		} else if receivedMessage.Datatype == "fillSparseEntry" {
 			fillSparseEntryHandler(receivedMessage.Data.(string), myMembers)
 		}
@@ -196,10 +205,10 @@ func crashHandler(crashed_ip string, myMembers map[string]Entry) {
 	}
 }
 
-func requestValueHandler(receivedMessage string, myKeyValue KeyValue) {
+func requestValueHandler(receivedMessage string) {
 	targetIp := strings.Split(receivedMessage, "#")[0]
 	key := strings.Split(receivedMessage, "#")[1]
-	kvData := KVData{"insert", SELF_IP, key, myKeyValue.Lookup(key), 1}
+	kvData := KVData{"insert", SELF_IP, key, MY_KEY_VALUE.Lookup(key), 1}
 	value := createMessage("keyvalue", kvData)
 	b, _ := json.Marshal(value)
 
@@ -446,10 +455,10 @@ func updateRMProtocolHandler(receivedData map[string][]string, myMembers map[str
 }
 
 //////
-func batchkeysProtocolHandler(receivedMessageData interface{}, myKeyValue KeyValue) {
+func batchkeysProtocolHandler(receivedMessageData interface{}) {
 	//fmt.Println("Going to update batch keys")
 	for key, value := range receivedMessageData.(map[string]interface{}) {
-		myKeyValue.data[key] = value
+		MY_KEY_VALUE.Insert(key, value)
 	}
 }
 
@@ -474,6 +483,8 @@ func gossipProtocolHandler(receivedMembers map[string]Entry, myMembers map[strin
 				entry.Leave = receivedValue.Leave
 				myMembers[receivedKey] = entry
 
+				CONNECTED_MACHINES += 1
+
 				//log joins
 				fmt.Print("JOIN:")
 				fmt.Print(receivedKey + " joined the system ")
@@ -483,32 +494,37 @@ func gossipProtocolHandler(receivedMembers map[string]Entry, myMembers map[strin
 	}
 }
 
-func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, selfName string, myKeyValue KeyValue) {
+func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, selfName string) {
+	var value interface{}
+	value = 0
+
 	if receivedData.Command == "insert" {
-		myKeyValue.Insert(string(receivedData.Key), receivedData.Value)
+		MY_KEY_VALUE.Insert(string(receivedData.Key), receivedData.Value)
 		fmt.Print("INSERT: ")
 		fmt.Print(receivedData.Key)
 		fmt.Println(" was inserted from " + receivedData.Origin)
+		value = receivedData.Value
 	} else if receivedData.Command == "lookup" {
-		//message := myKeyValue.Lookup(string(receivedData.Key))
-		//sendMessageToOrigin(receivedData.Origin, message)
+		value = MY_KEY_VALUE.Lookup(string(receivedData.Key))
 		fmt.Print("LOOKUP: ")
 		fmt.Print(receivedData.Key)
 		fmt.Println(" was looked up from " + receivedData.Origin)
 	} else if receivedData.Command == "update" {
-		myKeyValue.Update(string(receivedData.Key), receivedData.Value)
+		MY_KEY_VALUE.Update(string(receivedData.Key), receivedData.Value)
 		fmt.Print("UPDATE: ")
 		fmt.Print(receivedData.Key)
 		fmt.Println(" was updated from " + receivedData.Origin)
+		value = receivedData.Value
 	} else if receivedData.Command == "delete" {
 		fmt.Println("deleting")
-		myKeyValue.Delete(string(receivedData.Key))
+		MY_KEY_VALUE.Delete(string(receivedData.Key))
 		fmt.Print("DELETE: ")
 		fmt.Print(receivedData.Key)
 		fmt.Println(" was deleted from " + receivedData.Origin)
 	}
+
 	//create KVData
-	respKVData := KVData{receivedData.Command, SELF_IP, receivedData.Key, myKeyValue.Lookup(receivedData.Key), myKeyValue.GetVersion(receivedData.Key)}
+	respKVData := KVData{receivedData.Command, SELF_IP, receivedData.Key, value, MY_KEY_VALUE.GetVersion(receivedData.Key)}
 	sendMessageToOrigin(receivedData.Origin, respKVData)
 }
 
