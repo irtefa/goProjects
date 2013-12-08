@@ -520,6 +520,25 @@ func firstAskContact(members map[string]Entry, selfName string, sock *net.UDPCon
 		// Update leader pointer
 		leaderAskHandler(CONTACT_POINT, strings.Split(selfName, "#")[1])
 
+		// Block for leader pointer
+		for {
+			buf = make([]byte, RECV_BUF_LEN)
+			rlen, _, err = sock.ReadFromUDP(buf)
+			if QUIT == true {
+				return
+			}
+			logError(err)
+
+			//Second, setting up member information from retrieved value
+			var receivedMessage Message
+			err = json.Unmarshal(buf[:rlen], &receivedMessage)
+
+			if receivedMessage.Datatype == "leader-tell" {
+				RM_LEADER = receivedMessage.Data.(string)
+				break
+			}
+		}
+
 		// Get contact point's rm
 		m = createMessage("rmRequest", strings.Split(selfName, "#")[1])
 
