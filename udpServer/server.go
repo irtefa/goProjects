@@ -29,22 +29,23 @@ var (
 	RM                        = rm.NewRm()
 	REPLICA_LEVEL             = 3
 	RM_LEADER                 = "empty"
+	SELF_IP                   = "empty"
 )
 
 func main() {
 	CONTACT_POINT = os.Args[2]
-	ip_addr_curr_machine := os.Args[1]
+	SELF_IP := os.Args[1]
 	myKeyValue := KeyValue{}
 	myKeyValue.data = make(map[string]interface{})
 
 	idleLoop()
-	sock, members, selfName := joinLogic(ip_addr_curr_machine, myKeyValue)
+	sock, members, selfName := joinLogic(SELF_IP, myKeyValue)
 
 	for {
 		gameLoop(sock, members, selfName, myKeyValue)
 		leaveLogic(selfName, myKeyValue, members)
 		idleLoop()
-		sock, members, selfName = joinLogic(ip_addr_curr_machine, myKeyValue)
+		sock, members, selfName = joinLogic(SELF_IP, myKeyValue)
 	}
 }
 

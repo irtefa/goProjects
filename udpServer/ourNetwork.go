@@ -123,11 +123,102 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 		} else if receivedMessage.Datatype == "rmRequest" {
 			requesting_ip := receivedMessage.Data.(string)
 			rmRequestHandler(requesting_ip)
+		} else if receivedMessage.Datatype == "askforvalue" {
+			requestValueHandler(receivedMessage.Data.(string), myKeyValue)
 		}
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
 			fmt.Print(err)
 			fmt.Println(time.Now())
+		}
+	}
+}
+
+func requestValueHandler(receivedMessage string, myKeyValue KeyValue) {
+	targetIp := strings.Split(receivedMessage, "#")[0]
+	key := strings.Split(receivedMessage, "#")[1]
+
+	value := createMessage("recvkeyvalue", myKeyValue.Lookup(key))
+	b, _ := json.Marshal(value)
+
+	recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+	logError(err)
+	conn, err := net.DialUDP("udp", nil, recipientAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
+	}
+}
+
+func fillSparseEntryHandler(receivedValue string, myMembers map[string]Entry) {
+	//update RM that has sparse entries
+	allRms := RM.GetEntireRmData()
+	kv := make(map[string]string)
+	for key, value := range allRms {
+		if len(value) < REPLICA_LEVEL {
+			for {
+				//send request here with ip address and key
+				sock := netSetup()
+				kvMsg := createMessage("askforvalue", SELF_IP+"#"+key)
+				b, _ := json.Marshal(kvMsg)
+				targetIp := RM.Lookup(key, 0)
+				recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+				logError(err)
+				conn, err := net.DialUDP("udp", nil, recipientAddr)
+				if !logError(err) {
+					conn.Write(b)
+					conn.Close()
+				}
+				RM.Insert(key, receivedValue)
+				buf := make([]byte, RECV_BUF_LEN)
+				rlen, _, err := sock.ReadFromUDP(buf)
+				logError(err)
+				//Second, setting up member information from retrieved value
+				var receivedMessage Message
+				err = json.Unmarshal(buf[:rlen], &receivedMessage)
+				if receivedMessage.Datatype == "recvkeyvalue" {
+					kv[key] = receivedMessage.Data.(string)
+				}
+			}
+		}
+	}
+	//broadcast rm
+	broadcastRM := createMessage("updateRM", RM.GetEntireRmData())
+	b, _ := json.Marshal(broadcastRM)
+	for key, _ := range myMembers {
+		targetIp := strings.Split(key, "#")[1]
+		recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+		logError(err)
+		conn, err := net.DialUDP("udp", nil, recipientAddr)
+		if !logError(err) {
+			conn.Write(b)
+			conn.Close()
+		}
+	}
+	//send kv messages
+	for key, _ := range kv {
+		ips := RM.GetAll(kv[key])
+		//create KVData message
+		type KVData struct {
+			Command string      `json:"Command"`
+			Origin  string      `json:"Origin"`
+			Key     string      `json:"Key"`
+			Value   interface{} `json:"Value"`
+		}
+		kvData := KVData{"insert", SELF_IP, key, kv[key]}
+		kvMsg := createMessage("keyvalue", kvData)
+		b, _ = json.Marshal(kvMsg)
+
+		for key, _ := range ips {
+
+			targetIp := ips[key]
+			recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+			logError(err)
+			conn, err := net.DialUDP("udp", nil, recipientAddr)
+			if !logError(err) {
+				conn.Write(b)
+				conn.Close()
+			}
 		}
 	}
 }
@@ -319,7 +410,9 @@ func gossipProtocolHandler(receivedMembers map[string]Entry, myMembers map[strin
 				entry.Timestamp = time.Now().Unix()
 				entry.Leave = receivedValue.Leave
 				myMembers[receivedKey] = entry
-
+				if RM_LEADER == SELF_IP {
+					fillSparseEntryHandler(strings.Split(receivedKey, "#")[1], myMembers)
+				}
 				//log joins
 				fmt.Print("JOIN:")
 				fmt.Print(receivedKey + " joined the system ")
