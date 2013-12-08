@@ -403,7 +403,7 @@ func gossipProtocolHandler(receivedMembers map[string]Entry, myMembers map[strin
 		if myValue, exists := myMembers[receivedKey]; exists {
 			compareMembers(receivedKey, receivedValue, myValue, myMembers)
 		} else {
-			if receivedValue.Leave == false {
+			if receivedValue.Leave == false && receivedValue.Failure == false {
 				var entry Entry
 				entry.Failure = false
 				entry.Hbc = receivedValue.Hbc
