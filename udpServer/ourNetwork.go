@@ -120,6 +120,9 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 			leaderTellHandler(requesting_ip)
 		} else if receivedMessage.Datatype == "leader-tell" {
 			RM_LEADER = receivedMessage.Data.(string)
+		} else if receivedMessage.Datatype == "rmRequest" {
+			requesting_ip := receivedMessage.Data.(string)
+			rmRequestHandler(requesting_ip)
 		}
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
@@ -406,40 +409,56 @@ func notifyContactPoint(members map[string]Entry, selfName string) {
 }
 
 func firstAskContact(members map[string]Entry, selfName string, sock *net.UDPConn) {
-	m := createMessage("gossip", members)
-	b, err := json.Marshal(m)
-	//send to contact point
-	memberAddr, err := net.ResolveUDPAddr("udp", CONTACT_POINT+":"+PORT)
-	logError(err)
-	//
-	conn, err := net.DialUDP("udp", nil, memberAddr)
-	if !logError(err) {
-		conn.Write(b)
-		conn.Close()
-		//log join
-		fmt.Print("JOIN:")
-		fmt.Print(selfName + " joined the system ")
-		fmt.Println(time.Now())
+	if strings.Split(selfName, "#")[1] == CONTACT_POINT {
+		RM_LEADER = CONTACT_POINT
+	} else {
+		m := createMessage("gossip", members)
+		b, err := json.Marshal(m)
+
+		//send to contact point
+		memberAddr, err := net.ResolveUDPAddr("udp", CONTACT_POINT+":"+PORT)
+		logError(err)
+		//
+		conn, err := net.DialUDP("udp", nil, memberAddr)
+		if !logError(err) {
+			conn.Write(b)
+			conn.Close()
+			//log join
+			fmt.Print("JOIN:")
+			fmt.Print(selfName + " joined the system ")
+			fmt.Println(time.Now())
+		}
+
+		// Wait for contact point to respond
+		buf := make([]byte, RECV_BUF_LEN)
+		rlen, _, err := sock.ReadFromUDP(buf)
+		if QUIT == true {
+			return
+		}
+		logError(err)
+
+		//Respond received
+		var receivedMessage Message
+		err = json.Unmarshal(buf[:rlen], &receivedMessage)
+
+		receivedMembers := convertToEntryMap(receivedMessage.Data)
+		gossipProtocolHandler(receivedMembers, members)
+
+		// Update leader pointer
+		leaderAskHandler(CONTACT_POINT, strings.Split(selfName, "#")[1])
+
+		// Get contact point's rm
+		m = createMessage("rmRequest", strings.Split(selfName, "#")[1])
+
+		b, err = json.Marshal(m)
+		memberAddr, err = net.ResolveUDPAddr("udp", CONTACT_POINT+":"+PORT)
+		logError(err)
+		conn, err = net.DialUDP("udp", nil, memberAddr)
+		if !logError(err) {
+			conn.Write(b)
+			conn.Close()
+		}
 	}
-
-	// Wait for contact point to respond
-	buf := make([]byte, RECV_BUF_LEN)
-	rlen, _, err := sock.ReadFromUDP(buf)
-	if QUIT == true {
-		return
-	}
-	logError(err)
-
-	//Respond received
-	var receivedMessage Message
-	err = json.Unmarshal(buf[:rlen], &receivedMessage)
-
-	receivedMembers := convertToEntryMap(receivedMessage.Data)
-	gossipProtocolHandler(receivedMembers, members)
-
-	// Update leader pointer
-	leaderAskHandler(CONTACT_POINT, strings.Split(selfName, "#")[1])
-	// Get contact point's rm
 }
 
 func convertToEntryMap(genericData interface{}) map[string]Entry {
