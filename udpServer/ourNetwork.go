@@ -157,7 +157,7 @@ func crashHandler(crashed_ip string, myMembers map[string]Entry) {
 			RM.Replace(key, goodIps)
 			fmt.Println(RM.Lookup(key, 0))
 			if results != nil {
-				newIp = results[0]
+				newIp = strings.Split(results[0], "#")[1]
 				fillSparseEntryHandler(newIp, myMembers)
 			} else {
 				fmt.Println("WARNING: No replacement RMs found")
