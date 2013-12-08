@@ -320,11 +320,14 @@ func electionProtocolHandler(receivedData KVData, myMembers map[string]Entry) {
 	leaderSuffix := "1"
 	leader := ""
 
-	for key, _ := range myMembers {
-		ip := strings.Split(key, "#")[1]
-		suffix := strings.Split(ip, ".")[3]
-		if suffix > leaderSuffix {
-			leader = ip
+	for key, entry := range myMembers {
+		if entry.Failure == false {
+
+			ip := strings.Split(key, "#")[1]
+			suffix := strings.Split(ip, ".")[3]
+			if suffix > leaderSuffix {
+				leader = ip
+			}
 		}
 	}
 
@@ -341,6 +344,31 @@ func electionProtocolHandler(receivedData KVData, myMembers map[string]Entry) {
 	if !logError(err) {
 		conn.Write(b)
 		conn.Close()
+	}
+}
+
+func amITheLeader(myMembers map[string]Entry) {
+	leaderSuffix := "1"
+	leader := ""
+
+	for key, entry := range myMembers {
+		if entry.Failure == false {
+			ip := strings.Split(key, "#")[1]
+			suffix := strings.Split(ip, ".")[3]
+			if suffix > leaderSuffix {
+				leader = ip
+			}
+		}
+	}
+
+	if SELF_IP == leader {
+		crashed_ip := RM_LEADER
+		RM_LEADER = SELF_IP
+		for member, _ := range myMembers {
+			ip := strings.Split(member, "#")[1]
+			leaderTellHandler(ip)
+		}
+		crashHandler(crashed_ip, myMembers)
 	}
 }
 

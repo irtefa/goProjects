@@ -247,6 +247,9 @@ func checkFailure(members map[string]Entry) {
 
 				if SELF_IP == RM_LEADER {
 					crashHandler(strings.Split(member, "#")[1], members)
+				} else if RM_LEADER == strings.Split(member, "#")[1] {
+					// If the leader had failed
+					amITheLeader(members)
 				}
 			}
 		}
