@@ -196,7 +196,7 @@ func crashHandler(crashed_ip string, myMembers map[string]Entry) {
 func requestValueHandler(receivedMessage string, myKeyValue KeyValue) {
 	targetIp := strings.Split(receivedMessage, "#")[0]
 	key := strings.Split(receivedMessage, "#")[1]
-	kvData := KVData{"insert", SELF_IP, key, myKeyValue.Lookup(key)}
+	kvData := KVData{"insert", SELF_IP, key, myKeyValue.Lookup(key), 1}
 	value := createMessage("keyvalue", kvData)
 	b, _ := json.Marshal(value)
 
@@ -487,8 +487,8 @@ func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, se
 		fmt.Print(receivedData.Key)
 		fmt.Println(" was inserted from " + receivedData.Origin)
 	} else if receivedData.Command == "lookup" {
-		message := myKeyValue.Lookup(string(receivedData.Key))
-		sendMessageToOrigin(receivedData.Origin, message)
+		//message := myKeyValue.Lookup(string(receivedData.Key))
+		//sendMessageToOrigin(receivedData.Origin, message)
 		fmt.Print("LOOKUP: ")
 		fmt.Print(receivedData.Key)
 		fmt.Println(" was looked up from " + receivedData.Origin)
@@ -504,10 +504,13 @@ func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, se
 		fmt.Print(receivedData.Key)
 		fmt.Println(" was deleted from " + receivedData.Origin)
 	}
+	//create KVData
+	respKVData := KVData{receivedData.Command, SELF_IP, receivedData.Key, receivedData.Value, myKeyValue.GetVersion(receivedData.Key)}
+	sendMessageToOrigin(receivedData.Origin, respKVData)
 }
 
-func sendMessageToOrigin(targetIp string, message interface{}) {
-	m := createMessage("string", message)
+func sendMessageToOrigin(targetIp string, sendData KVData) {
+	m := createMessage("kvresp", sendData)
 	b, err := json.Marshal(m)
 
 	recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
@@ -666,8 +669,9 @@ func convertToKVData(genericData interface{}) KVData {
 	origin := genericData.(map[string]interface{})["Origin"].(string)
 	key := genericData.(map[string]interface{})["Key"].(string)
 	value := genericData.(map[string]interface{})["Value"]
+	version := genericData.(map[string]interface{})["Version"].(int)
 
-	return KVData{command, origin, key, value}
+	return KVData{command, origin, key, value, version}
 }
 
 func convertToRM(genericData interface{}) map[string][]string {

@@ -161,7 +161,7 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 					value := commands[2]
 					targetIp := strings.Split(selfName, "#")[1]
 
-					kvdata := KVData{"insert", targetIp, key, value}
+					kvdata := KVData{"insert", targetIp, key, value, 0}
 					sendKV(targetIp, kvdata)
 				}
 			case command == "LOOKUP":
@@ -169,7 +169,7 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 					key := commands[1]
 					targetIp := strings.Split(selfName, "#")[1]
 
-					kvdata := KVData{"lookup", targetIp, key, 0}
+					kvdata := KVData{"lookup", targetIp, key, 0, 0}
 					sendKV(targetIp, kvdata)
 				}
 			case command == "DELETE":
@@ -177,7 +177,7 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 					key := commands[1]
 					targetIp := strings.Split(selfName, "#")[1]
 
-					kvdata := KVData{"delete", targetIp, key, 0}
+					kvdata := KVData{"delete", targetIp, key, 0, 0}
 					sendKV(targetIp, kvdata)
 				}
 			case command == "UPDATE":
@@ -185,7 +185,7 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 					key := commands[1]
 					targetIp := strings.Split(selfName, "#")[1]
 
-					kvdata := KVData{"update", targetIp, key, commands[2]}
+					kvdata := KVData{"update", targetIp, key, commands[2], 0}
 					sendKV(targetIp, kvdata)
 				}
 			case command == "SHOW":
