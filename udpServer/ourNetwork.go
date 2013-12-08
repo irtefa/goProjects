@@ -81,7 +81,7 @@ func sendKV(targetIp string, data KVData) {
  * @param remote address of the machine that sent the heartBeat
  * @param buf the byte array containing the messages
  */
-func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName string, myKeyValue KeyValue) {
+func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName string, myKeyValue KeyValue, c chan KVData) {
 	for {
 		//we should change the byte length in the future
 		//First initialize connection
@@ -102,6 +102,9 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 		} else if receivedMessage.Datatype == "keyvalue" {
 			receivedMessageData := convertToKVData(receivedMessage.Data)
 			keyValueProtocolHandler(receivedMessageData, myMembers, selfName, myKeyValue)
+		} else if receivedMessage.Datatype == "kvresp" {
+			receivedMessageData := convertToKVData(receivedMessage.Data)
+			c <- receivedMessageData
 		} else if receivedMessage.Datatype == "string" {
 			fmt.Println(receivedMessage.Data.(string))
 		} else if receivedMessage.Datatype == "batchkeys" {
@@ -505,7 +508,7 @@ func keyValueProtocolHandler(receivedData KVData, myMembers map[string]Entry, se
 		fmt.Println(" was deleted from " + receivedData.Origin)
 	}
 	//create KVData
-	respKVData := KVData{receivedData.Command, SELF_IP, receivedData.Key, receivedData.Value, myKeyValue.GetVersion(receivedData.Key)}
+	respKVData := KVData{receivedData.Command, SELF_IP, receivedData.Key, myKeyValue.Lookup(receivedData.Key), myKeyValue.GetVersion(receivedData.Key)}
 	sendMessageToOrigin(receivedData.Origin, respKVData)
 }
 

@@ -109,8 +109,10 @@ func logError(err error) bool {
 4) Send heartbeats to k random members in list
 */
 func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string, myKeyValue KeyValue) {
-	go recvHeartBeat(sock, members, selfName, myKeyValue)
-	go checkForExit(sock, members, selfName, myKeyValue)
+	var c chan KVData = make(chan KVData)
+
+	go recvHeartBeat(sock, members, selfName, myKeyValue, c)
+	go checkForExit(sock, members, selfName, myKeyValue, c)
 	var waitDuration int64 = 100
 
 	for {
@@ -140,7 +142,7 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string, myKe
 	}
 }
 
-func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, myKeyValue KeyValue) {
+func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, myKeyValue KeyValue, c chan KVData) {
 	for {
 		userInput := handleCmdInput()
 		commands := strings.Fields(userInput) //splits the input into an array
@@ -158,36 +160,47 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 				}
 			case command == "INSERT":
 				{
-					key := commands[1]
-					value := commands[2]
+					intlevel := findLevelAmt(commands[1])
+					key := commands[2]
+					value := commands[3]
 					targetIp := strings.Split(selfName, "#")[1]
 
 					kvdata := KVData{"insert", targetIp, key, value, 0}
 					sendKV(targetIp, kvdata)
+					_ = waitForLevelAmt(intlevel, c)
 				}
 			case command == "LOOKUP":
 				{
-					key := commands[1]
+					intlevel := findLevelAmt(commands[1])
+					key := commands[2]
 					targetIp := strings.Split(selfName, "#")[1]
 
 					kvdata := KVData{"lookup", targetIp, key, 0, 0}
 					sendKV(targetIp, kvdata)
+
+					response := waitForLevelAmt(intlevel, c)
+					fmt.Println(response.Value)
 				}
 			case command == "DELETE":
 				{
-					key := commands[1]
+					intlevel := findLevelAmt(commands[1])
+					key := commands[2]
 					targetIp := strings.Split(selfName, "#")[1]
 
 					kvdata := KVData{"delete", targetIp, key, 0, 0}
 					sendKV(targetIp, kvdata)
+					_ = waitForLevelAmt(intlevel, c)
 				}
 			case command == "UPDATE":
 				{
-					key := commands[1]
+					intlevel := findLevelAmt(commands[1])
+					key := commands[2]
+					value := commands[3]
 					targetIp := strings.Split(selfName, "#")[1]
 
-					kvdata := KVData{"update", targetIp, key, commands[2], 0}
+					kvdata := KVData{"update", targetIp, key, value, 0}
 					sendKV(targetIp, kvdata)
+					_ = waitForLevelAmt(intlevel, c)
 				}
 			case command == "SHOW":
 				{
@@ -226,6 +239,43 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 			}
 		}
 	}
+}
+
+func findLevelAmt(level string) int {
+	if strings.ToUpper(level) == "ONE" {
+		return 1
+	} else if strings.ToUpper(level) == "QUORUM" {
+		return REPLICA_LEVEL/2 + 1
+	} else if strings.ToUpper(level) == "ALL" {
+		return REPLICA_LEVEL
+	} else {
+		return 1
+	}
+}
+
+func waitForLevelAmt(level int, c chan KVData) KVData {
+	counter := 0
+	finalResult := KVData{"nil", "nil", "nil", "nil", 0}
+
+	for {
+		msg := <-c
+		if finalResult.Command == "nil" {
+			finalResult = msg
+		} else if msg.Version > finalResult.Version {
+			finalResult = msg
+		}
+		counter = counter + 1
+
+		if counter == level {
+			fmt.Println("*************")
+			fmt.Print("Received responses from: ")
+			fmt.Print(counter)
+			fmt.Println(" RMs")
+			break
+		}
+	}
+
+	return finalResult
 }
 
 // mark failure if time.now - entry.timestamp > 5
