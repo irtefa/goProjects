@@ -147,8 +147,8 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 
 					kvdata := KVData{"insert", targetIp, key, value, 0}
 					sendKV(targetIp, kvdata)
-					_ = waitForLevelAmt(intlevel, c)
-					filterOutOthers(REPLICA_LEVEL-intlevel, c)
+					_, found := waitForLevelAmt(intlevel, c)
+					filterOutOthers(found, c)
 				}
 			case command == "LOOKUP":
 				{
@@ -159,9 +159,9 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 					kvdata := KVData{"lookup", targetIp, key, 0, 0}
 					sendKV(targetIp, kvdata)
 
-					response := waitForLevelAmt(intlevel, c)
+					response, found := waitForLevelAmt(intlevel, c)
 					fmt.Println(response.Value)
-					filterOutOthers(REPLICA_LEVEL-intlevel, c)
+					filterOutOthers(found, c)
 				}
 			case command == "DELETE":
 				{
@@ -171,8 +171,8 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 
 					kvdata := KVData{"delete", targetIp, key, 0, 0}
 					sendKV(targetIp, kvdata)
-					_ = waitForLevelAmt(intlevel, c)
-					filterOutOthers(REPLICA_LEVEL-intlevel, c)
+					_, found := waitForLevelAmt(intlevel, c)
+					filterOutOthers(found, c)
 				}
 			case command == "UPDATE":
 				{
@@ -183,8 +183,8 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 
 					kvdata := KVData{"update", targetIp, key, value, 0}
 					sendKV(targetIp, kvdata)
-					_ = waitForLevelAmt(intlevel, c)
-					filterOutOthers(REPLICA_LEVEL-intlevel, c)
+					_, found := waitForLevelAmt(intlevel, c)
+					filterOutOthers(found, c)
 				}
 			case command == "SHOW":
 				{
@@ -237,7 +237,7 @@ func findLevelAmt(level string) int {
 
 }
 
-func waitForLevelAmt(level int, c chan KVData) KVData {
+func waitForLevelAmt(level int, c chan KVData) (KVData, int) {
 	counter := 0
 	finalResult := KVData{"nil", "nil", "nil", "nil", 0}
 
@@ -260,7 +260,7 @@ func waitForLevelAmt(level int, c chan KVData) KVData {
 	fmt.Print(counter)
 	fmt.Println(" RMs")
 
-	return finalResult
+	return finalResult, counter
 }
 
 func filterOutOthers(amount_found int, c chan KVData) {
