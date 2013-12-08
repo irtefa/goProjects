@@ -37,6 +37,10 @@ func (_rm Rm) DeleteKey(key string) {
 	delete(_rm.data, key)
 }
 
+func (_rm Rm) DeleteIp(key string, ip string) {
+
+}
+
 func (_rm Rm) SizeOfKey(key string) int {
 	return len(_rm.data[key])
 }
@@ -56,4 +60,8 @@ func (_rm Rm) Show() {
 
 func (_rm Rm) GetEntireRmData() map[string][]string {
 	return _rm.data
+}
+
+func (_rm Rm) Replace(key string, value []string) {
+	_rm.data[key] = value
 }

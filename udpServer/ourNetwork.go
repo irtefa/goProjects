@@ -136,22 +136,35 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 	}
 }
 
-/*
-func recvKeyValueHandler(kvData KVData) {
+func crashHandler(crashed_ip string, myMembers map[string]Entry) {
+	rmData := RM.GetEntireRmData()
 
-	RM.Insert(key, receivedValue)
-	buf := make([]byte, RECV_BUF_LEN)
+	for key, ipAddrs := range rmData {
+		//Check if crashed ip is in ip adress list
+		containsCrashedIp := false
+		goodIps := make([]string, 0)
+		for index, _ := range ipAddrs {
+			if ipAddrs[index] == crashed_ip {
+				containsCrashedIp = true
+			} else {
+				goodIps = append(goodIps, ipAddrs[index])
+			}
+		}
 
-	rlen, _, err := sock.ReadFromUDP(buf)
-	logError(err)
-
-	//Second, setting up member information from retrieved value
-	var receivedMessage Message
-	err = json.Unmarshal(buf[:rlen], &receivedMessage)
-	if receivedMessage.Datatype == "recvkeyvalue" {
-		kv[key] = receivedMessage.Data.(string)
+		if containsCrashedIp {
+			newIp := "baby"
+			results := pickAdressesFilterThese(myMembers, 1, goodIps)
+			RM.Replace(key, goodIps)
+			fmt.Println(RM.Lookup(key, 0))
+			if results != nil {
+				newIp = results[0]
+				fillSparseEntryHandler(newIp, myMembers)
+			} else {
+				fmt.Println("WARNING: No replacement RMs found")
+			}
+		}
 	}
-}*/
+}
 
 func requestValueHandler(receivedMessage string, myKeyValue KeyValue) {
 	targetIp := strings.Split(receivedMessage, "#")[0]
@@ -176,16 +189,19 @@ func fillSparseEntryHandler(recipient_IP string, myMembers map[string]Entry) {
 
 	for key, value := range allRms {
 		if len(value) < REPLICA_LEVEL {
-			//send request here with ip address and key
-			kvMsg := createMessage("askforvalue", recipient_IP+"#"+key)
-			b, _ := json.Marshal(kvMsg)
-			targetIp := RM.Lookup(key, 0)
-			recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
-			logError(err)
-			conn, err := net.DialUDP("udp", nil, recipientAddr)
-			if !logError(err) {
-				conn.Write(b)
-				conn.Close()
+			ips := RM.GetAll(key)
+			for idx, _ := range ips {
+				//send request here with ip address and key
+				kvMsg := createMessage("askforvalue", recipient_IP+"#"+key)
+				b, _ := json.Marshal(kvMsg)
+				targetIp := ips[idx]
+				recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+				logError(err)
+				conn, err := net.DialUDP("udp", nil, recipientAddr)
+				if !logError(err) {
+					conn.Write(b)
+					conn.Close()
+				}
 			}
 
 			// Update RM

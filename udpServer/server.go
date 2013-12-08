@@ -244,6 +244,10 @@ func checkFailure(members map[string]Entry) {
 				fmt.Print("FAILURE:")
 				fmt.Print(member + " is marked as failure ")
 				fmt.Println(time.Now())
+
+				if SELF_IP == RM_LEADER {
+					crashHandler(strings.Split(member, "#")[1], members)
+				}
 			}
 		}
 		if (time.Now().Unix() - entry.Timestamp) >= 10 {
