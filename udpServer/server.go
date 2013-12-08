@@ -168,6 +168,7 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 					kvdata := KVData{"insert", targetIp, key, value, 0}
 					sendKV(targetIp, kvdata)
 					_ = waitForLevelAmt(intlevel, c)
+					filterOutOthers(REPLICA_LEVEL-intlevel, c)
 				}
 			case command == "LOOKUP":
 				{
@@ -180,6 +181,7 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 
 					response := waitForLevelAmt(intlevel, c)
 					fmt.Println(response.Value)
+					filterOutOthers(REPLICA_LEVEL-intlevel, c)
 				}
 			case command == "DELETE":
 				{
@@ -190,6 +192,7 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 					kvdata := KVData{"delete", targetIp, key, 0, 0}
 					sendKV(targetIp, kvdata)
 					_ = waitForLevelAmt(intlevel, c)
+					filterOutOthers(REPLICA_LEVEL-intlevel, c)
 				}
 			case command == "UPDATE":
 				{
@@ -201,6 +204,7 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 					kvdata := KVData{"update", targetIp, key, value, 0}
 					sendKV(targetIp, kvdata)
 					_ = waitForLevelAmt(intlevel, c)
+					filterOutOthers(REPLICA_LEVEL-intlevel, c)
 				}
 			case command == "SHOW":
 				{
@@ -276,6 +280,19 @@ func waitForLevelAmt(level int, c chan KVData) KVData {
 	}
 
 	return finalResult
+}
+
+func filterOutOthers(remainder int, c chan KVData) {
+	counter := 0
+
+	for {
+		_ = <-c
+		counter += 1
+
+		if counter == remainder {
+			return
+		}
+	}
 }
 
 // mark failure if time.now - entry.timestamp > 5
