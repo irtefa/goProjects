@@ -151,34 +151,36 @@ func requestValueHandler(receivedMessage string, myKeyValue KeyValue) {
 }
 
 func fillSparseEntryHandler(receivedValue string, myMembers map[string]Entry) {
+
 	//update RM that has sparse entries
 	allRms := RM.GetEntireRmData()
 	kv := make(map[string]string)
 	for key, value := range allRms {
 		if len(value) < REPLICA_LEVEL {
-			for {
-				//send request here with ip address and key
-				sock := netSetup()
-				kvMsg := createMessage("askforvalue", SELF_IP+"#"+key)
-				b, _ := json.Marshal(kvMsg)
-				targetIp := RM.Lookup(key, 0)
-				recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
-				logError(err)
-				conn, err := net.DialUDP("udp", nil, recipientAddr)
-				if !logError(err) {
-					conn.Write(b)
-					conn.Close()
-				}
-				RM.Insert(key, receivedValue)
-				buf := make([]byte, RECV_BUF_LEN)
-				rlen, _, err := sock.ReadFromUDP(buf)
-				logError(err)
-				//Second, setting up member information from retrieved value
-				var receivedMessage Message
-				err = json.Unmarshal(buf[:rlen], &receivedMessage)
-				if receivedMessage.Datatype == "recvkeyvalue" {
-					kv[key] = receivedMessage.Data.(string)
-				}
+			//send request here with ip address and key
+			sock := netSetup()
+			kvMsg := createMessage("askforvalue", SELF_IP+"#"+key)
+			b, _ := json.Marshal(kvMsg)
+			targetIp := RM.Lookup(key, 0)
+			recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+			logError(err)
+			conn, err := net.DialUDP("udp", nil, recipientAddr)
+			if !logError(err) {
+				conn.Write(b)
+				conn.Close()
+			}
+
+			RM.Insert(key, receivedValue)
+			buf := make([]byte, RECV_BUF_LEN)
+
+			rlen, _, err := sock.ReadFromUDP(buf)
+			logError(err)
+
+			//Second, setting up member information from retrieved value
+			var receivedMessage Message
+			err = json.Unmarshal(buf[:rlen], &receivedMessage)
+			if receivedMessage.Datatype == "recvkeyvalue" {
+				kv[key] = receivedMessage.Data.(string)
 			}
 		}
 	}
@@ -410,9 +412,11 @@ func gossipProtocolHandler(receivedMembers map[string]Entry, myMembers map[strin
 				entry.Timestamp = time.Now().Unix()
 				entry.Leave = receivedValue.Leave
 				myMembers[receivedKey] = entry
+
 				if RM_LEADER == SELF_IP {
 					fillSparseEntryHandler(strings.Split(receivedKey, "#")[1], myMembers)
 				}
+
 				//log joins
 				fmt.Print("JOIN:")
 				fmt.Print(receivedKey + " joined the system ")

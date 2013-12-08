@@ -34,7 +34,7 @@ var (
 
 func main() {
 	CONTACT_POINT = os.Args[2]
-	SELF_IP := os.Args[1]
+	SELF_IP = os.Args[1]
 	myKeyValue := KeyValue{}
 	myKeyValue.data = make(map[string]interface{})
 
