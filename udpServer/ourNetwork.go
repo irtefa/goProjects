@@ -142,18 +142,30 @@ func crashHandler(crashed_ip string, myMembers map[string]Entry) {
 	for key, ipAddrs := range rmData {
 		//Check if crashed ip is in ip adress list
 		containsCrashedIp := false
+		leftoverIps := make([]string, 0)
 		goodIps := make([]string, 0)
 		for index, _ := range ipAddrs {
 			if ipAddrs[index] == crashed_ip {
 				containsCrashedIp = true
 			} else {
-				goodIps = append(goodIps, ipAddrs[index])
+				leftoverIps = append(leftoverIps, ipAddrs[index])
 			}
 		}
 
 		if containsCrashedIp {
 			newIp := "baby"
-			results := pickAdressesFilterThese(myMembers, 1, goodIps)
+			results := pickAdressesFilterThese(myMembers, 1, leftoverIps)
+
+			for member, entry := range myMembers {
+				memberIp := strings.Split(member, "#")[1]
+
+				for i, _ := range leftoverIps {
+					if leftoverIps[i] == memberIp && entry.Failure == false {
+						goodIps = append(goodIps, leftoverIps[i])
+					}
+				}
+			}
+
 			RM.Replace(key, goodIps)
 
 			if results != nil {
