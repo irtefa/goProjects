@@ -327,6 +327,7 @@ func electionProtocolHandler(receivedData KVData, myMembers map[string]Entry) {
 			suffix := strings.Split(ip, ".")[3]
 			if suffix > leaderSuffix {
 				leader = ip
+				leaderSuffix = suffix
 			}
 		}
 	}
@@ -357,6 +358,7 @@ func amITheLeader(myMembers map[string]Entry) {
 			suffix := strings.Split(ip, ".")[3]
 			if suffix > leaderSuffix {
 				leader = ip
+				leaderSuffix = suffix
 			}
 		}
 	}
