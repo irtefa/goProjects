@@ -57,7 +57,9 @@ func joinLogic(ip_addr_curr_machine string, myKeyValue KeyValue) (*net.UDPConn, 
 	membershipInfo := initializeMembers(ip_addr_curr_machine)
 	members := membershipInfo.List
 	selfName := membershipInfo.Id
+
 	firstAskContact(members, selfName, sock)
+
 	//notifyContactPoint(members, selfName)
 	//leaderAskHandler(CONTACT_POINT, strings.Split(selfName, "#")[1])
 

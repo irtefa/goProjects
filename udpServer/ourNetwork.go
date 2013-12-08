@@ -125,6 +125,8 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 			rmRequestHandler(requesting_ip)
 		} else if receivedMessage.Datatype == "askforvalue" {
 			requestValueHandler(receivedMessage.Data.(string), myKeyValue)
+		} else if receivedMessage.Datatype == "fillSparseEntry" {
+			fillSparseEntryHandler(receivedMessage.Data.(string), myMembers)
 		}
 		if err != nil {
 			fmt.Print("MARSHALFAIL:")
@@ -391,10 +393,6 @@ func gossipProtocolHandler(receivedMembers map[string]Entry, myMembers map[strin
 				entry.Leave = receivedValue.Leave
 				myMembers[receivedKey] = entry
 
-				if RM_LEADER == SELF_IP {
-					fillSparseEntryHandler(strings.Split(receivedKey, "#")[1], myMembers)
-				}
-
 				//log joins
 				fmt.Print("JOIN:")
 				fmt.Print(receivedKey + " joined the system ")
@@ -533,6 +531,18 @@ func firstAskContact(members map[string]Entry, selfName string, sock *net.UDPCon
 			conn.Write(b)
 			conn.Close()
 		}
+
+	}
+	//send request to leader
+	m := createMessage("fillSparseEntry", SELF_IP)
+
+	b, err := json.Marshal(m)
+	memberAddr, err := net.ResolveUDPAddr("udp", RM_LEADER+":"+PORT)
+	logError(err)
+	conn, err := net.DialUDP("udp", nil, memberAddr)
+	if !logError(err) {
+		conn.Write(b)
+		conn.Close()
 	}
 }
 
