@@ -155,10 +155,12 @@ func crashHandler(crashed_ip string, myMembers map[string]Entry) {
 			newIp := "baby"
 			results := pickAdressesFilterThese(myMembers, 1, goodIps)
 			RM.Replace(key, goodIps)
-			fmt.Println(RM.Lookup(key, 0))
+
 			if results != nil {
-				newIp = strings.Split(results[0], "#")[1]
-				fillSparseEntryHandler(newIp, myMembers)
+				if !myMembers[results[0]].Failure {
+					newIp = strings.Split(results[0], "#")[1]
+					fillSparseEntryHandler(newIp, myMembers)
+				}
 			} else {
 				fmt.Println("WARNING: No replacement RMs found")
 			}
