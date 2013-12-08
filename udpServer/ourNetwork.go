@@ -113,7 +113,12 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 		} else if receivedMessage.Datatype == "kvresp" {
 			//This handler is mainly just for testing client-stuff
 			receivedMessageData := convertToKVData(receivedMessage.Data)
-			c <- receivedMessageData
+			select {
+			case c <- receivedMessageData:
+			default:
+				fmt.Print("WARNING: Message received but not parsed | ")
+				fmt.Println(receivedMessageData)
+			}
 		} else if receivedMessage.Datatype == "string" {
 			fmt.Println(receivedMessage.Data.(string))
 		} else if receivedMessage.Datatype == "batchkeys" {

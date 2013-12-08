@@ -127,6 +127,15 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 		userInput := handleCmdInput()
 		commands := strings.Fields(userInput) //splits the input into an array
 
+		msg := KVData{"nil", "nil", "nil", "nil", 0}
+
+		select {
+		case msg = <-c:
+			fmt.Println("received message:", msg.Command)
+		default:
+			fmt.Println("no message received")
+		}
+
 		if len(commands) != 0 {
 			switch command := strings.ToUpper(commands[0]); {
 
@@ -147,8 +156,8 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 
 					kvdata := KVData{"insert", targetIp, key, value, 0}
 					sendKV(targetIp, kvdata)
-					_, found := waitForLevelAmt(intlevel, c)
-					filterOutOthers(found, c)
+					_, _ = waitForLevelAmt(intlevel, c)
+					//filterOutOthers(found, c)
 				}
 			case command == "LOOKUP":
 				{
@@ -159,9 +168,9 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 					kvdata := KVData{"lookup", targetIp, key, 0, 0}
 					sendKV(targetIp, kvdata)
 
-					response, found := waitForLevelAmt(intlevel, c)
+					response, _ := waitForLevelAmt(intlevel, c)
 					fmt.Println(response.Value)
-					filterOutOthers(found, c)
+					//filterOutOthers(found, c)
 				}
 			case command == "DELETE":
 				{
@@ -171,8 +180,8 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 
 					kvdata := KVData{"delete", targetIp, key, 0, 0}
 					sendKV(targetIp, kvdata)
-					_, found := waitForLevelAmt(intlevel, c)
-					filterOutOthers(found, c)
+					_, _ = waitForLevelAmt(intlevel, c)
+					//filterOutOthers(found, c)
 				}
 			case command == "UPDATE":
 				{
@@ -183,8 +192,8 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 
 					kvdata := KVData{"update", targetIp, key, value, 0}
 					sendKV(targetIp, kvdata)
-					_, found := waitForLevelAmt(intlevel, c)
-					filterOutOthers(found, c)
+					_, _ = waitForLevelAmt(intlevel, c)
+					//filterOutOthers(found, c)
 				}
 			case command == "SHOW":
 				{
