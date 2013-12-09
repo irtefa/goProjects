@@ -133,7 +133,6 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 		case msg = <-c:
 			fmt.Println("received message:", msg.Command)
 		default:
-			fmt.Println("no message received")
 		}
 
 		if len(commands) != 0 {
