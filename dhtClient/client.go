@@ -32,30 +32,31 @@ func main() {
 		fmt.Println("Not enough arguments")
 		fmt.Println("Correct format is:")
 		fmt.Println("-----")
-		fmt.Println("<self_ip> <contact_ip> <command> <key> <value=optional>")
+		fmt.Println("<self_ip> <contact_ip> <level> <command> <key> <value=optional> ")
 		return
 	}
 
 	our_ip := os.Args[1]
 	contact_point := os.Args[2]
-	command := os.Args[3]
-	key := os.Args[4]
+	command := os.Args[4]
+	key := os.Args[5]
 	value := "nil"
+	level := os.Args[3]
 
 	if strings.ToUpper(command) == "LOOKUP" {
 	} else if strings.ToUpper(command) == "DELETE" {
 	} else if strings.ToUpper(command) == "INSERT" {
-		if len(os.Args) < 6 {
+		if len(os.Args) < 7 {
 			fmt.Println("Not enough arguments")
 			return
 		}
-		value = os.Args[5]
+		value = os.Args[6]
 	} else if strings.ToUpper(command) == "UPDATE" {
-		if len(os.Args) < 6 {
+		if len(os.Args) < 7 {
 			fmt.Println("Not enough arguments")
 			return
 		}
-		value = os.Args[5]
+		value = os.Args[6]
 	} else {
 		fmt.Println("Incorrect command type. Aborting!!!")
 		return
@@ -79,7 +80,13 @@ func main() {
 		// Initialize benchmark time
 		t0 := time.Now()
 
-		waitForResponse()
+		if level == "one" {
+			waitForResponse(1)
+		} else if level == "quorum" {
+			waitForResponse(2)
+		} else if level == "all" {
+			waitForResponse(3)
+		}
 
 		t1 := time.Now()
 		fmt.Print(upperCommand + " took: ")
@@ -87,23 +94,32 @@ func main() {
 	}
 }
 
-func waitForResponse() {
-	// Wait for response
+func waitForResponse(level int) {
+	counter := 0
 	sock := netSetup()
-	var receivedMessage Message
-	buf := make([]byte, RECV_BUF_LEN)
-	rlen, _, err := sock.ReadFromUDP(buf)
-	logError(err)
-	err = json.Unmarshal(buf[:rlen], &receivedMessage)
 
-	if receivedMessage.Datatype == "kvresp" {
-		kv := convertToKVData(receivedMessage.Data)
-		if kv.Command == "lookup" {
-			fmt.Println(kv.Value)
+	for {
+		// Wait for response
+		var receivedMessage Message
+		buf := make([]byte, RECV_BUF_LEN)
+		rlen, _, err := sock.ReadFromUDP(buf)
+		logError(err)
+		err = json.Unmarshal(buf[:rlen], &receivedMessage)
+
+		if receivedMessage.Datatype == "kvresp" {
+			counter += 1
+
+			if counter == level {
+				kv := convertToKVData(receivedMessage.Data)
+				if kv.Command == "lookup" {
+					fmt.Println(kv.Value)
+				}
+				fmt.Println("OK!")
+				return
+			}
+		} else {
+			fmt.Println("Incorrect datatype received. Abort!")
 		}
-		fmt.Println("OK!")
-	} else {
-		fmt.Println("Incorrect datatype received. Abort!")
 	}
 }
 
