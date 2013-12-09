@@ -393,9 +393,6 @@ func amITheLeader(myMembers map[string]Entry) {
 		}
 		crashHandler(crashed_ip, myMembers)
 	}
-
-	fmt.Print("New leader is:")
-	fmt.Println(leader)
 }
 
 // you are elected as the leader

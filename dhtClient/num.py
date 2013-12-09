@@ -13,7 +13,7 @@ class Cool:
             print line.rstrip()
 
     def push(self):
-        for i in range(0,1000):
+        for i in range(0,100):
             key = str(i)
             value = str(i)
             cmd = self.insert(key, value)
