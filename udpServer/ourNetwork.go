@@ -94,7 +94,9 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 		//we should change the byte length in the future
 		//First initialize connection
 		buf := make([]byte, RECV_BUF_LEN)
+		//fmt.Println("before")
 		rlen, _, err := sock.ReadFromUDP(buf)
+		//fmt.Println("after")
 		if QUIT == true {
 			return
 		}
@@ -116,8 +118,8 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 			select {
 			case c <- receivedMessageData:
 			default:
-				fmt.Print("WARNING: Message received but not parsed | ")
-				fmt.Println(receivedMessageData)
+				//fmt.Print("WARNING: Message received but not parsed | ")
+				//fmt.Println(receivedMessageData)
 			}
 		} else if receivedMessage.Datatype == "string" {
 			fmt.Println(receivedMessage.Data.(string))
@@ -191,19 +193,10 @@ func crashHandler(crashed_ip string, myMembers map[string]Entry) {
 					fillSparseEntryHandler(newIp, myMembers)
 				}
 			} else {
-				fmt.Println("WARNING: No replacement RMs found")
-				//broadcast rm
-				broadcastRM := createMessage("updateRM", RM.GetEntireRmData())
-				b, _ := json.Marshal(broadcastRM)
+				//fmt.Println("WARNING: No replacement RMs found")
 				for key, _ := range myMembers {
 					targetIp := strings.Split(key, "#")[1]
-					recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
-					logError(err)
-					conn, err := net.DialUDP("udp", nil, recipientAddr)
-					if !logError(err) {
-						conn.Write(b)
-						conn.Close()
-					}
+					rmRequestHandler(targetIp)
 				}
 			}
 		}
@@ -216,7 +209,9 @@ func requestValueHandler(receivedMessage string) {
 	kvData := KVData{"insert", SELF_IP, key, MY_KEY_VALUE.Lookup(key), 1}
 	value := createMessage("keyvalue", kvData)
 	b, _ := json.Marshal(value)
-
+	//fmt.Print("++++")
+	//fmt.Print(key)
+	//fmt.Println("++++")
 	recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
 	logError(err)
 	conn, err := net.DialUDP("udp", nil, recipientAddr)
@@ -232,13 +227,14 @@ func fillSparseEntryHandler(recipient_IP string, myMembers map[string]Entry) {
 	allRms := RM.GetEntireRmData()
 
 	for key, value := range allRms {
+		fmt.Println(key)
 		if len(value) < REPLICA_LEVEL {
 			ips := RM.GetAll(key)
 			for idx, _ := range ips {
+				targetIp := ips[idx]
 				//send request here with ip address and key
 				kvMsg := createMessage("askforvalue", recipient_IP+"#"+key)
 				b, _ := json.Marshal(kvMsg)
-				targetIp := ips[idx]
 				recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
 				logError(err)
 				conn, err := net.DialUDP("udp", nil, recipientAddr)
@@ -247,17 +243,25 @@ func fillSparseEntryHandler(recipient_IP string, myMembers map[string]Entry) {
 					conn.Close()
 				}
 			}
-
 			// Update RM
 			RM.Insert(key, recipient_IP)
 		}
 	}
-	//broadcast rm
-	broadcastRM := createMessage("updateRM", RM.GetEntireRmData())
-	b, _ := json.Marshal(broadcastRM)
-	for key, _ := range myMembers {
-		targetIp := strings.Split(key, "#")[1]
-		recipientAddr, err := net.ResolveUDPAddr("udp", targetIp+":"+PORT)
+
+	rmRequestHandler(recipient_IP)
+}
+
+func rmRequestHandler(requestor_ip string) {
+	sendData := make(map[string][]string)
+	sendData = RM.GetEntireRmData()
+
+	for key, value := range sendData {
+		sendChunk := make(map[string][]string)
+		sendChunk[key] = value
+		mappingMsg := createMessage("updateRM", sendChunk)
+		b, _ := json.Marshal(mappingMsg)
+
+		recipientAddr, err := net.ResolveUDPAddr("udp", requestor_ip+":"+PORT)
 		logError(err)
 		conn, err := net.DialUDP("udp", nil, recipientAddr)
 		if !logError(err) {
@@ -265,22 +269,7 @@ func fillSparseEntryHandler(recipient_IP string, myMembers map[string]Entry) {
 			conn.Close()
 		}
 	}
-}
 
-func rmRequestHandler(requestor_ip string) {
-	sendData := make(map[string][]string)
-	sendData = RM.GetEntireRmData()
-
-	mappingMsg := createMessage("updateRM", sendData)
-	b, _ := json.Marshal(mappingMsg)
-
-	recipientAddr, err := net.ResolveUDPAddr("udp", requestor_ip+":"+PORT)
-	logError(err)
-	conn, err := net.DialUDP("udp", nil, recipientAddr)
-	if !logError(err) {
-		conn.Write(b)
-		conn.Close()
-	}
 }
 
 func leaderAskHandler(contact_ip string, self_ip string) {
