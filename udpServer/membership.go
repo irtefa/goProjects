@@ -80,20 +80,20 @@ func pickAdressesFilterThese(members map[string]Entry, k int, filters []string) 
 	var aliveMembers []string
 	var kMembers []string
 	//pick k alive processes
-	for key, _ := range members {
-		entry := members[key]
+	for key, entry := range members {
 		source_ip := strings.Split(key, "#")[1]
 
-		notFiltered := true
+		filtered := false
 		for i, _ := range filters {
-			filter_name := filters[i]
+			filter_ip := filters[i]
+			//filter_ip := strings.Split(filter_name, "#")[1]
 
-			if source_ip == filter_name {
-				notFiltered = false
+			if source_ip == filter_ip {
+				filtered = true
 			}
 		}
 
-		if !entry.Failure && notFiltered {
+		if !entry.Failure && !filtered {
 			aliveMembers = append(aliveMembers, key)
 		}
 	}

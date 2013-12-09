@@ -96,6 +96,9 @@ func gameLoop(sock *net.UDPConn, members map[string]Entry, selfName string) {
 	var waitDuration int64 = 100
 
 	for {
+		//if SELF_IP == RM_LEADER {
+		//	crashHandler("does not matter", members)
+		//}
 		startTime := time.Now().Unix()
 		// Check if quit
 		if QUIT == true {
@@ -127,12 +130,13 @@ func checkForExit(sock *net.UDPConn, members map[string]Entry, selfName string, 
 		userInput := handleCmdInput()
 		commands := strings.Fields(userInput) //splits the input into an array
 
-		msg := KVData{"nil", "nil", "nil", "nil", 0}
+		//msg := KVData{"nil", "nil", "nil", "nil", 0}
 
 		select {
-		case msg = <-c:
+		case msg := <-c:
 			fmt.Println("received message:", msg.Command)
 		default:
+			fmt.Println("no message received")
 		}
 
 		if len(commands) != 0 {
@@ -251,6 +255,7 @@ func waitForLevelAmt(level int, c chan KVData) (KVData, int) {
 
 	for {
 		msg := <-c
+
 		if finalResult.Command == "nil" {
 			finalResult = msg
 		} else if msg.Version > finalResult.Version {
@@ -258,9 +263,28 @@ func waitForLevelAmt(level int, c chan KVData) (KVData, int) {
 		}
 		counter = counter + 1
 
+		fmt.Println(counter)
 		if counter == level {
 			break
 		}
+
+		/*
+			select {
+			case msg := <-c:
+				if finalResult.Command == "nil" {
+					finalResult = msg
+				} else if msg.Version > finalResult.Version {
+					finalResult = msg
+				}
+				counter = counter + 1
+
+				fmt.Println(counter)
+			default:
+				fmt.Println(counter)
+				if counter == level {
+					break
+				}
+			}*/
 	}
 
 	fmt.Println("*************")

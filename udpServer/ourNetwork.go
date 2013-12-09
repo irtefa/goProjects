@@ -115,6 +115,9 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 		} else if receivedMessage.Datatype == "kvresp" {
 			//This handler is mainly just for testing client-stuff
 			receivedMessageData := convertToKVData(receivedMessage.Data)
+
+			//c <- receivedMessageData
+
 			select {
 			case c <- receivedMessageData:
 			default:
@@ -158,49 +161,78 @@ func recvHeartBeat(sock *net.UDPConn, myMembers map[string]Entry, selfName strin
 func crashHandler(crashed_ip string, myMembers map[string]Entry) {
 	rmData := RM.GetEntireRmData()
 
-	for key, ipAddrs := range rmData {
-		//Check if crashed ip is in ip adress list
-		containsCrashedIp := false
-		leftoverIps := make([]string, 0)
-		goodIps := make([]string, 0)
-		for index, _ := range ipAddrs {
-			if ipAddrs[index] == crashed_ip {
-				containsCrashedIp = true
-			} else {
-				leftoverIps = append(leftoverIps, ipAddrs[index])
-			}
-		}
+	// 1) Iterate through the ipAdressses of a given key
+	//		if ip address exists and is not failed, do nothing
+	//		else, remove it
 
-		if containsCrashedIp {
-			newIp := "baby"
-			results := pickAdressesFilterThese(myMembers, 1, leftoverIps)
+	// 2) Using remainder, find new ones.
+
+	for key, ipAddrs := range rmData {
+		goodIps := make([]string, 0)
+
+		// After this, leftover ips is all good ips left
+		for index, _ := range ipAddrs {
+			ipAddress := ipAddrs[index]
 
 			for member, entry := range myMembers {
 				memberIp := strings.Split(member, "#")[1]
 
-				for i, _ := range leftoverIps {
-					if leftoverIps[i] == memberIp && entry.Failure == false {
-						goodIps = append(goodIps, leftoverIps[i])
-					}
+				if memberIp == ipAddress && entry.Failure == false {
+					goodIps = append(goodIps, ipAddress)
+				} else {
+					// Do nothing
+				}
+			}
+		}
+
+		oldIps := goodIps
+		// Find replacements if needed
+		leftoverAmt := len(goodIps)
+
+		replacements := pickAdressesFilterThese(myMembers, REPLICA_LEVEL-leftoverAmt, goodIps)
+
+		for i, _ := range replacements {
+			replacementIp := strings.Split(replacements[i], "#")[1]
+			goodIps = append(goodIps, replacementIp)
+		}
+
+		RM.Replace(key, goodIps)
+
+		//iterate through good ips
+		for i, _ := range goodIps {
+			isReplace := false
+			goodIp := goodIps[i]
+
+			for j, _ := range replacements {
+				replacementIp := strings.Split(replacements[j], "#")[1]
+				if goodIp == replacementIp {
+					isReplace = true
 				}
 			}
 
-			RM.Replace(key, goodIps)
-
-			if results != nil {
-				if !myMembers[results[0]].Failure {
-					newIp = strings.Split(results[0], "#")[1]
-					fillSparseEntryHandler(newIp, myMembers)
-				}
-			} else {
-				//fmt.Println("WARNING: No replacement RMs found")
-				for key, _ := range myMembers {
-					targetIp := strings.Split(key, "#")[1]
-					rmRequestHandler(targetIp)
+			if isReplace {
+				kvMsg := createMessage("askforvalue", goodIp+"#"+key)
+				b, _ := json.Marshal(kvMsg)
+				recipientAddr, err := net.ResolveUDPAddr("udp", oldIps[0]+":"+PORT)
+				logError(err)
+				conn, err := net.DialUDP("udp", nil, recipientAddr)
+				if !logError(err) {
+					conn.Write(b)
+					conn.Close()
 				}
 			}
 		}
 	}
+
+	for member, _ := range myMembers {
+		memberIp := strings.Split(member, "#")[1]
+
+		if memberIp == SELF_IP {
+		} else {
+			rmRequestHandler(memberIp)
+		}
+	}
+	// only rm Request if a change was made, and to every ip in our membership
 }
 
 func requestValueHandler(receivedMessage string) {
@@ -248,7 +280,15 @@ func fillSparseEntryHandler(recipient_IP string, myMembers map[string]Entry) {
 		}
 	}
 
-	rmRequestHandler(recipient_IP)
+	//rmRequestHandler(recipient_IP)
+	for member, _ := range myMembers {
+		memberIp := strings.Split(member, "#")[1]
+
+		if memberIp == SELF_IP {
+		} else {
+			rmRequestHandler(memberIp)
+		}
+	}
 }
 
 func rmRequestHandler(requestor_ip string) {

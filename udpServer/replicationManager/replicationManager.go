@@ -59,7 +59,19 @@ func (_rm Rm) Show() {
 }
 
 func (_rm Rm) GetEntireRmData() map[string][]string {
-	return _rm.data
+	stuff := make(map[string][]string)
+
+	for key, ipAddrs := range _rm.data {
+		values := make([]string, 0)
+
+		for i, _ := range ipAddrs {
+			values = append(values, ipAddrs[i])
+		}
+
+		stuff[key] = values
+	}
+
+	return stuff
 }
 
 func (_rm Rm) Replace(key string, value []string) {
