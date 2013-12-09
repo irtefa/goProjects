@@ -382,6 +382,8 @@ func amITheLeader(myMembers map[string]Entry) {
 		}
 	}
 
+	RM_LEADER = leader
+
 	if SELF_IP == leader {
 		crashed_ip := RM_LEADER
 		RM_LEADER = SELF_IP
