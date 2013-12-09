@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -13,8 +12,9 @@ import (
 type KVData struct {
 	Command string      `json:"Command"`
 	Origin  string      `json:"Origin"`
-	Key     uint32      `json:"Key"`
+	Key     string      `json:"Key"`
 	Value   interface{} `json:"Value"`
+	Version float64     `json:"Version"`
 }
 
 type Message struct {
@@ -39,7 +39,7 @@ func main() {
 	our_ip := os.Args[1]
 	contact_point := os.Args[2]
 	command := os.Args[3]
-	key, _ := strconv.Atoi(os.Args[4])
+	key := os.Args[4]
 	value := "nil"
 
 	if strings.ToUpper(command) == "LOOKUP" {
@@ -60,11 +60,10 @@ func main() {
 		fmt.Println("Incorrect command type. Aborting!!!")
 		return
 	}
-
-	kvData := KVData{command, our_ip, uint32(key), value}
+	kvData := KVData{command, our_ip, key, value, 0}
 
 	// Send message to contact point
-	m := createMessage("keyvalue", kvData)
+	m := createMessage("first", kvData)
 	b, err := json.Marshal(m)
 
 	recipientAddr, err := net.ResolveUDPAddr("udp", contact_point+":"+PORT)
@@ -75,14 +74,15 @@ func main() {
 		conn.Close()
 	}
 
-	if strings.ToUpper(command) == "LOOKUP" {
+	upperCommand := strings.ToUpper(command)
+	if upperCommand == "LOOKUP" || upperCommand == "INSERT" || upperCommand == "DELETE" || upperCommand == "UPDATE" {
 		// Initialize benchmark time
 		t0 := time.Now()
 
 		waitForResponse()
 
 		t1 := time.Now()
-		fmt.Print("Lookup took: ")
+		fmt.Print(upperCommand + " took: ")
 		fmt.Println(t1.Sub(t0))
 	}
 }
@@ -96,8 +96,12 @@ func waitForResponse() {
 	logError(err)
 	err = json.Unmarshal(buf[:rlen], &receivedMessage)
 
-	if receivedMessage.Datatype == "string" {
-		fmt.Println(receivedMessage.Data.(string))
+	if receivedMessage.Datatype == "kvresp" {
+		kv := convertToKVData(receivedMessage.Data)
+		if kv.Command == "lookup" {
+			fmt.Println(kv.Value)
+		}
+		fmt.Println("OK!")
 	} else {
 		fmt.Println("Incorrect datatype received. Abort!")
 	}
@@ -131,4 +135,14 @@ func netSetup() *net.UDPConn {
 	logError(err)
 
 	return sock
+}
+
+func convertToKVData(genericData interface{}) KVData {
+	command := genericData.(map[string]interface{})["Command"].(string)
+	origin := genericData.(map[string]interface{})["Origin"].(string)
+	key := genericData.(map[string]interface{})["Key"].(string)
+	value := genericData.(map[string]interface{})["Value"]
+	version := genericData.(map[string]interface{})["Version"].(float64)
+
+	return KVData{command, origin, key, value, version}
 }
